@@ -1,4 +1,5 @@
 # Railway-optimized Dockerfile for Mizan API
+# Updated: Dec 16, 2025
 FROM python:3.11-slim
 
 WORKDIR /app
