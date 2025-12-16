@@ -21,8 +21,8 @@ export const navigationConfig = {
     product: [
       { title: 'Features', href: '/#features' },
       { title: 'Playground', href: '/playground' },
-      { title: 'API', href: '/docs' },
-      { title: 'Pricing', href: '/#pricing' },
+      { title: 'API', href: '/docs/api' },
+      { title: 'Open Source', href: 'https://github.com/ahmetabdullahgultekin/Mizan', external: true },
     ],
     resources: [
       { title: 'Documentation', href: '/docs' },

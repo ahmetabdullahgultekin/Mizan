@@ -78,12 +78,24 @@ export function Footer() {
             <ul className="space-y-3">
               {navigationConfig.footerNav.product.map((item) => (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {item.title}
-                  </Link>
+                  {'external' in item && item.external ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {item.title}
+                      <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {item.title}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
