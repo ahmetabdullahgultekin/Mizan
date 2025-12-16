@@ -14,8 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+# But include website/lib (source code)
+!website/lib/
 parts/
 sdist/
 var/
