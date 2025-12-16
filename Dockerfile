@@ -1,6 +1,9 @@
 # Railway-optimized Dockerfile for Mizan API
-# Updated: Dec 16, 2025
+# Cache bust: v2
 FROM python:3.11-slim
+
+# Build arg to invalidate cache
+ARG CACHEBUST=1
 
 WORKDIR /app
 
@@ -33,6 +36,10 @@ COPY alembic/ alembic/
 COPY alembic.ini .
 COPY data/ data/
 
+# Copy and setup entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Set PYTHONPATH
 ENV PYTHONPATH=/app/src
 
@@ -40,5 +47,5 @@ ENV PYTHONPATH=/app/src
 ENV PORT=8000
 EXPOSE 8000
 
-# Start command using shell form for variable expansion
-CMD uvicorn mizan.api.main:app --host 0.0.0.0 --port $PORT
+# Use entrypoint script for proper variable expansion
+ENTRYPOINT ["/entrypoint.sh"]
