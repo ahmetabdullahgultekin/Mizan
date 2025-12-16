@@ -35,8 +35,9 @@ COPY data/ data/
 # Set PYTHONPATH
 ENV PYTHONPATH=/app/src
 
-# Expose port (Railway sets PORT env var)
+# Default port (Railway sets PORT env var)
+ENV PORT=8000
 EXPOSE 8000
 
-# Start command (Railway overrides with $PORT)
-CMD ["sh", "-c", "uvicorn mizan.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Start command using shell form for variable expansion
+CMD uvicorn mizan.api.main:app --host 0.0.0.0 --port $PORT
