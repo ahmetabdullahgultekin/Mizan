@@ -1,0 +1,44 @@
+# Git
+.git/
+.gitignore
+
+# Website (separate build)
+website/
+
+# Tests
+tests/
+
+# Docker
+docker/
+docker-compose*.yml
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Docs
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Railway/Render configs (not needed in image)
+Procfile
+railway.toml
+render.yaml
