@@ -106,12 +106,12 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator - centered */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.5, duration: 0.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-8 left-0 right-0 flex justify-center"
       >
         <motion.div
           animate={{ y: [0, 8, 0] }}
@@ -119,11 +119,11 @@ export function Hero() {
           className="flex flex-col items-center text-muted-foreground"
         >
           <span className="mb-2 text-xs">Scroll to explore</span>
-          <div className="h-8 w-5 rounded-full border-2 border-muted-foreground/30 p-1">
+          <div className="flex h-8 w-5 items-start justify-center rounded-full border-2 border-muted-foreground/30 pt-1">
             <motion.div
-              animate={{ y: [0, 8, 0] }}
+              animate={{ y: [0, 10, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="h-2 w-1 rounded-full bg-gold-500"
+              className="h-2 w-1.5 rounded-full bg-gold-500"
             />
           </div>
         </motion.div>

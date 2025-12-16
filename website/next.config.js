@@ -3,8 +3,12 @@ const nextConfig = {
   // Use standalone for Docker, export for GitHub Pages
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : 'export',
 
-  // Base path for GitHub Pages (when using static export)
-  basePath: process.env.DOCKER_BUILD === 'true' ? '' : '',
+  // Base path for GitHub Pages (repo name as subdirectory)
+  // Docker: no basePath, GitHub Pages: /Mizan
+  basePath: process.env.DOCKER_BUILD === 'true' ? '' : '/Mizan',
+
+  // Asset prefix for GitHub Pages
+  assetPrefix: process.env.DOCKER_BUILD === 'true' ? '' : '/Mizan',
 
   // Disable image optimization for static export
   images: {
