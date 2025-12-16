@@ -40,6 +40,8 @@ def get_engine() -> AsyncEngine:
             max_overflow=settings.db_max_overflow,
             echo=settings.db_echo,
             pool_pre_ping=True,  # Verify connections before use
+            # Disable prepared statement cache for pgbouncer/Supabase pooler compatibility
+            connect_args={"statement_cache_size": 0, "prepared_statement_cache_size": 0},
         )
     return _engine
 
