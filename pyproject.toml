@@ -41,11 +41,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/username/mizan"
-Documentation = "https://github.com/username/mizan#readme"
-Repository = "https://github.com/username/mizan.git"
-Issues = "https://github.com/username/mizan/issues"
-Changelog = "https://github.com/username/mizan/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/ahmetabdullahgultekin/Mizan"
+Documentation = "https://github.com/ahmetabdullahgultekin/Mizan#readme"
+Repository = "https://github.com/ahmetabdullahgultekin/Mizan.git"
+Issues = "https://github.com/ahmetabdullahgultekin/Mizan/issues"
+Changelog = "https://github.com/ahmetabdullahgultekin/Mizan/blob/main/CHANGELOG.md"
 
 dependencies = [
     # Core Web Framework

@@ -223,3 +223,15 @@ service-account.json
 
 # Claude Code local config
 .claude/
+
+# Node.js / Next.js (Website)
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# Package manager locks (use npm)
+yarn.lock
+pnpm-lock.yaml

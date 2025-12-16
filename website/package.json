@@ -1,0 +1,57 @@
+{
+  "name": "mizan-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive website and playground for Mizan Quranic Text Analysis Engine",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit",
+    "export": "next build"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.0.0",
+    "@radix-ui/react-dropdown-menu": "^2.0.0",
+    "@radix-ui/react-label": "^2.0.0",
+    "@radix-ui/react-scroll-area": "^1.0.0",
+    "@radix-ui/react-select": "^2.0.0",
+    "@radix-ui/react-separator": "^1.0.0",
+    "@radix-ui/react-slot": "^1.0.0",
+    "@radix-ui/react-switch": "^1.0.0",
+    "@radix-ui/react-tabs": "^1.0.0",
+    "@radix-ui/react-tooltip": "^1.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.363.0",
+    "next": "^14.2.0",
+    "next-themes": "^0.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "sonner": "^1.4.0",
+    "tailwind-merge": "^2.2.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.0",
+    "@types/node": "20.19.27",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.2.0",
+    "prettier-plugin-tailwindcss": "^0.5.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

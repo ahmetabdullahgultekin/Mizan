@@ -1,0 +1,16 @@
+# Fonts Directory
+
+Place the following font files here:
+
+1. Amiri-Regular.woff2
+2. Amiri-Bold.woff2
+3. Cairo-Variable.woff2
+
+You can download these from Google Fonts:
+- Amiri: https://fonts.google.com/specimen/Amiri
+- Cairo: https://fonts.google.com/specimen/Cairo
+
+Or use the following commands to download:
+```bash
+# Using google-webfonts-helper or similar tools
+```

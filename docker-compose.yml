@@ -22,6 +22,24 @@ services:
     networks:
       - mizan-network
 
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+      args:
+        - DOCKER_BUILD=true
+    container_name: mizan-website
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+      - NODE_ENV=production
+    depends_on:
+      - api
+    networks:
+      - mizan-network
+
   db:
     image: postgres:15-alpine
     container_name: mizan-db

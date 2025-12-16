@@ -1,0 +1,337 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CSS Variables - Design Tokens
+   ============================================ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 43 74% 49%; /* Gold */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 160 84% 39%; /* Emerald */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 43 74% 49%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 43 74% 49%; /* Gold */
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 160 84% 39%; /* Emerald */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 43 74% 49%;
+  }
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Scrollbar styling for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/20;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+/* ============================================
+   Arabic Typography
+   ============================================ */
+@layer base {
+  /* Arabic text base styles */
+  [lang="ar"],
+  .arabic-text {
+    font-family: var(--font-amiri), var(--font-cairo), 'Traditional Arabic', serif;
+    direction: rtl;
+    text-align: right;
+    line-height: 2;
+    letter-spacing: 0;
+  }
+
+  /* Quranic text styling */
+  .quran-text {
+    font-family: var(--font-amiri), 'KFGQPC Uthmanic Script HAFS', serif;
+    font-size: 1.5rem;
+    line-height: 2.5;
+    direction: rtl;
+    text-align: right;
+  }
+
+  /* Bismillah styling */
+  .bismillah {
+    font-family: var(--font-amiri), serif;
+    font-size: 2rem;
+    text-align: center;
+    direction: rtl;
+    @apply text-gradient-gold;
+  }
+}
+
+/* ============================================
+   Glassmorphism Components
+   ============================================ */
+@layer components {
+  .glass-card {
+    @apply relative overflow-hidden rounded-xl;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Gold glow effect */
+  .glow-gold {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3),
+                0 0 40px rgba(212, 175, 55, 0.1);
+  }
+
+  /* Emerald glow effect */
+  .glow-emerald {
+    box-shadow: 0 0 20px rgba(5, 150, 105, 0.3),
+                0 0 40px rgba(5, 150, 105, 0.1);
+  }
+}
+
+/* ============================================
+   Animation Utilities
+   ============================================ */
+@layer utilities {
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--accent)) 100%
+    );
+  }
+
+  /* Aurora background - static for performance */
+  .aurora-bg {
+    background: linear-gradient(
+      135deg,
+      rgba(212, 175, 55, 0.08) 0%,
+      transparent 40%,
+      rgba(5, 150, 105, 0.06) 70%,
+      transparent 100%
+    );
+  }
+
+  /* Shimmer effect for loading states */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Float animation */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Performance optimizations */
+  .will-change-auto {
+    will-change: auto;
+  }
+
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
+
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+}
+
+/* ============================================
+   Islamic Geometric Patterns
+   ============================================ */
+@layer utilities {
+  /* Subtle geometric pattern overlay */
+  .pattern-geometric {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4AF37' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* Star pattern */
+  .pattern-stars {
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M40 0L40 80M0 40L80 40M0 0L80 80M80 0L0 80'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3C/g%3E%3C/svg%3E");
+  }
+}
+
+/* ============================================
+   Counter Animation (CSS @property)
+   ============================================ */
+@property --num {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+
+.animated-counter {
+  animation: counter 2s ease-out forwards;
+  counter-reset: num var(--num);
+}
+
+.animated-counter::after {
+  content: counter(num);
+}
+
+/* ============================================
+   Page Transitions
+   ============================================ */
+@layer utilities {
+  .page-enter {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .page-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms ease-out, transform 300ms ease-out;
+  }
+
+  .page-exit {
+    opacity: 1;
+  }
+
+  .page-exit-active {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+  }
+}
+
+/* ============================================
+   Responsive Design Helpers
+   ============================================ */
+@layer utilities {
+  /* Hide on touch devices */
+  @media (hover: none) {
+    .hover-only {
+      display: none;
+    }
+  }
+
+  /* Full viewport height accounting for mobile browser UI */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
