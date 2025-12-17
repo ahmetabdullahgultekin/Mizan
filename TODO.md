@@ -7,41 +7,43 @@
 | Backend API | ✅ LIVE | https://web-production-09717.up.railway.app |
 | Database | ✅ Connected | Supabase (PostgreSQL) |
 | Redis Cache | ✅ Connected | Railway Redis |
-| Frontend | ⏳ Pending | https://ahmetabdullahgultekin.github.io/Mizan |
+| Frontend | ✅ LIVE | https://ahmetabdullahgultekin.github.io/Mizan |
 
 ---
 
-## Priority 1: Frontend Deployment (GitHub Pages)
+## Priority 1: Database Seeding ⚡ READY TO RUN
 
-- [ ] Go to GitHub repo Settings → Pages
-- [ ] Change Source from "Deploy from branch" to "GitHub Actions"
-- [ ] Trigger workflow manually or push a commit
-- [ ] Verify website loads at https://ahmetabdullahgultekin.github.io/Mizan
+### Seed Script Created: `scripts/seed_database.py`
+
+A comprehensive seeding script has been created that:
+- ✅ Parses local Tanzil XML files (uthmani, uthmani-min, simple)
+- ✅ Downloads metadata from gadingnst/quran-api (page, juz, hizb, manzil, ruku, sajda)
+- ✅ Computes abjad values (Mashriqi & Maghribi), word counts, letter counts
+- ✅ Generates SHA-256 checksums for data integrity
+
+### To Seed the Database:
+
+```bash
+# Test without making changes
+DATABASE_URL="your-supabase-url" python scripts/seed_database.py --dry-run
+
+# Seed the database
+DATABASE_URL="your-supabase-url" python scripts/seed_database.py
+
+# Force reseed (clears existing data)
+DATABASE_URL="your-supabase-url" python scripts/seed_database.py --force
+```
+
+### Data Included:
+- ✅ 114 Surahs with full metadata (English names, Arabic names, transliteration, revelation type/order)
+- ✅ 6,236 Verses in 3 scripts (Uthmani, Uthmani-min, Simple)
+- ✅ Structural divisions (juz, hizb, ruku, manzil, page numbers)
+- ✅ Sajdah markers (recommended/obligatory)
+- ✅ Pre-computed analytics (word count, letter count, abjad values)
 
 ---
 
-## Priority 2: Database Seeding
-
-### Option A: Create Seed Script
-- [ ] Create `scripts/seed_database.py`
-- [ ] Fetch Quran text from Tanzil.net API or use local XML
-- [ ] Parse and insert verses into `verses` table
-- [ ] Add surah metadata to `surah_metadata` table
-- [ ] Run seed script against Supabase
-
-### Option B: Use Tanzil XML Data
-- [ ] Download Quran XML from https://tanzil.net/download
-- [ ] Create parser for Tanzil XML format
-- [ ] Insert data via Alembic migration or seed script
-
-### Required Data:
-- 114 Surahs metadata (names, verse counts, revelation type)
-- 6,236 Verses (Arabic text in multiple scripts)
-- Morphology data (optional, from MASAQ dataset)
-
----
-
-## Priority 3: Frontend-Backend Integration
+## Priority 2: Frontend-Backend Integration
 
 - [ ] Update `NEXT_PUBLIC_API_URL` in GitHub Actions to Railway URL
 - [ ] Test Playground page with live API
@@ -51,7 +53,7 @@
 
 ---
 
-## Priority 4: Production Hardening
+## Priority 3: Production Hardening
 
 ### Security
 - [ ] Change `SECRET_KEY` from default value
@@ -71,7 +73,7 @@
 
 ---
 
-## Priority 5: Feature Completion
+## Priority 4: Feature Completion
 
 ### Coming Soon Pages to Complete
 - [ ] `/docs/api` - Full API documentation
@@ -103,6 +105,9 @@
 - [x] GitHub Pages workflow created
 - [x] Coming Soon pages created
 - [x] Navigation links fixed
+- [x] Frontend deployed to GitHub Pages
+- [x] Database seed script created (`scripts/seed_database.py`)
+- [x] Quran metadata integration (Tanzil XML + gadingnst/quran-api)
 
 ---
 
