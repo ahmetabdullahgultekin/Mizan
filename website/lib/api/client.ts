@@ -10,6 +10,7 @@ import type {
   AnalysisResponse,
   VerseResponse,
   SurahListResponse,
+  SurahMetadata,
   SurahResponse,
   HealthResponse,
   ApiError,
@@ -112,9 +113,11 @@ export class ApiClient {
 
   /**
    * Get list of all surahs with metadata
+   * Backend returns array directly, we wrap it for frontend convenience
    */
   async getSurahList(): Promise<SurahListResponse> {
-    return this.get<SurahListResponse>('/api/v1/surahs');
+    const surahs = await this.get<SurahMetadata[]>('/api/v1/surahs');
+    return { surahs, total: surahs.length };
   }
 
   /**
@@ -129,51 +132,141 @@ export class ApiClient {
   // ==========================================
 
   /**
-   * Analyze text (letters, words, abjad)
+   * Analyze text or verse - combines letter count, word count, and abjad
+   * Uses backend GET endpoints with query params
    */
   async analyze(request: AnalysisRequest): Promise<AnalysisResponse> {
-    return this.post<AnalysisResponse>('/api/v1/analyze', request);
+    // If surah and ayah provided, use verse analysis endpoint
+    if (request.surah && request.ayah) {
+      return this.analyzeVerse(request.surah, request.ayah, request.abjad_system);
+    }
+
+    // For custom text, call individual endpoints and combine results
+    if (!request.text) {
+      throw new ApiClientError('No text or verse reference provided', 400, {
+        detail: 'Provide either text or surah+ayah',
+      });
+    }
+
+    const text = request.text;
+    const system = request.abjad_system || 'mashriqi';
+
+    // Call abjad endpoint which analyzes text
+    const abjadResult = await this.calculateAbjad(text, system, true);
+
+    // Build response matching frontend expected format
+    return {
+      text,
+      letter_count: this.countLettersLocal(text),
+      word_count: this.countWordsLocal(text),
+      abjad_value: abjadResult.value,
+      letter_method: request.letter_method || 'traditional',
+      abjad_system: system as 'mashriqi' | 'maghribi',
+      breakdown: abjadResult.breakdown,
+    };
   }
 
   /**
-   * Analyze a verse by reference
+   * Analyze a verse by reference using backend endpoint
    */
   async analyzeVerse(
     surah: number,
     ayah: number,
-    options?: Partial<AnalysisRequest>
+    system: string = 'mashriqi'
   ): Promise<AnalysisResponse> {
-    return this.get<AnalysisResponse>(
-      `/api/v1/analyze/verse/${surah}/${ayah}` +
-        (options ? `?${new URLSearchParams(options as Record<string, string>)}` : '')
-    );
+    // Use the combined verse analysis endpoint
+    const result = await this.get<{
+      location: string;
+      letters: { count: number };
+      words: { count: number };
+      abjad: { value: number; breakdown?: Array<{ letter: string; value: number }> };
+    }>(`/api/v1/analysis/verse/${surah}/${ayah}`);
+
+    // Get verse text
+    const verse = await this.getVerse(surah, ayah);
+
+    return {
+      text: verse.text || verse.text_uthmani || '',
+      letter_count: result.letters.count,
+      word_count: result.words.count,
+      abjad_value: result.abjad.value,
+      letter_method: 'traditional',
+      abjad_system: system as 'mashriqi' | 'maghribi',
+      breakdown: result.abjad.breakdown?.map(b => ({
+        letter: b.letter,
+        count: 1,
+        percentage: 0,
+        abjad_value: b.value,
+      })),
+      metadata: {
+        surah,
+        ayah,
+        source: 'database',
+      },
+    };
   }
 
   /**
-   * Get letter count for text
+   * Get letter count using backend endpoint
    */
   async countLetters(
-    text: string,
-    method: string = 'traditional'
-  ): Promise<{ count: number; method: string }> {
-    return this.post('/api/v1/analyze/letters', { text, method });
+    surah?: number,
+    verse?: number
+  ): Promise<{ count: number; scope: object; methodology: string }> {
+    const params = new URLSearchParams();
+    if (surah) params.append('surah', surah.toString());
+    if (verse) params.append('verse', verse.toString());
+    return this.get(`/api/v1/analysis/letters/count?${params}`);
   }
 
   /**
-   * Get word count for text
+   * Get word count using backend endpoint
    */
-  async countWords(text: string): Promise<{ count: number }> {
-    return this.post('/api/v1/analyze/words', { text });
+  async countWords(
+    surah?: number,
+    verse?: number
+  ): Promise<{ count: number; scope: object; methodology: string }> {
+    const params = new URLSearchParams();
+    if (surah) params.append('surah', surah.toString());
+    if (verse) params.append('verse', verse.toString());
+    return this.get(`/api/v1/analysis/words/count?${params}`);
   }
 
   /**
-   * Calculate Abjad value
+   * Calculate Abjad value using backend endpoint
    */
   async calculateAbjad(
     text: string,
-    system: string = 'mashriqi'
-  ): Promise<{ value: number; system: string }> {
-    return this.post('/api/v1/analyze/abjad', { text, system });
+    system: string = 'mashriqi',
+    includeBreakdown: boolean = false
+  ): Promise<{ value: number; system: string; breakdown?: Array<{ letter: string; value: number }> }> {
+    const params = new URLSearchParams({
+      text,
+      system,
+      include_breakdown: includeBreakdown.toString(),
+    });
+    return this.get(`/api/v1/analysis/abjad?${params}`);
+  }
+
+  // ==========================================
+  // Local helpers for text analysis (when API unavailable)
+  // ==========================================
+
+  private countLettersLocal(text: string): number {
+    let count = 0;
+    for (const char of text) {
+      // Count Arabic letters (0600-06FF range, excluding diacritics)
+      if (char >= '\u0600' && char <= '\u06FF') {
+        if (!(char >= '\u064B' && char <= '\u065F')) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  private countWordsLocal(text: string): number {
+    return text.split(/\s+/).filter(Boolean).length;
   }
 }
 

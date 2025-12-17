@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, RotateCcw, History, Keyboard } from 'lucide-react';
+import { Sparkles, RotateCcw, History, Keyboard, AlertCircle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/playground';
 import { Spotlight } from '@/components/animated/spotlight';
 import { GlowingOrbs } from '@/components/animated/floating-particles';
+import { useVerseAnalysis } from '@/hooks/use-verse-analysis';
 import type { LetterCountMethod, AbjadSystem, AnalysisResponse } from '@/types/api';
 
 /**
@@ -28,48 +29,25 @@ export default function PlaygroundPage() {
   const [customText, setCustomText] = React.useState('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ');
   const [letterMethod, setLetterMethod] = React.useState<LetterCountMethod>('traditional');
   const [abjadSystem, setAbjadSystem] = React.useState<AbjadSystem>('mashriqi');
-  const [isAnalyzing, setIsAnalyzing] = React.useState(false);
-  const [result, setResult] = React.useState<AnalysisResponse | null>(null);
 
-  // Mock analysis function (in production, this would call the API)
+  // Use the real API hook
+  const { result, isLoading: isAnalyzing, error, analyzeText, analyzeVerse, reset: resetAnalysis } = useVerseAnalysis();
+
+  // Handle analysis - calls real API
   const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    setResult(null);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // Mock result based on input
-    const text = inputMode === 'custom' ? customText : 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
-
-    // Simple mock calculation
-    const mockResult: AnalysisResponse = {
-      text,
-      letter_count: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 19 : Math.floor(text.length * 0.6),
-      word_count: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 4 : text.split(' ').filter(Boolean).length,
-      abjad_value: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 786 : Math.floor(Math.random() * 1000) + 100,
-      letter_method: letterMethod,
-      abjad_system: abjadSystem,
-      breakdown: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? [
-        { letter: 'ا', count: 3, percentage: 15.79, abjad_value: 1 },
-        { letter: 'ل', count: 4, percentage: 21.05, abjad_value: 30 },
-        { letter: 'ر', count: 2, percentage: 10.53, abjad_value: 200 },
-        { letter: 'ح', count: 2, percentage: 10.53, abjad_value: 8 },
-        { letter: 'م', count: 3, percentage: 15.79, abjad_value: 40 },
-        { letter: 'ن', count: 1, percentage: 5.26, abjad_value: 50 },
-        { letter: 'ب', count: 1, percentage: 5.26, abjad_value: 2 },
-        { letter: 'س', count: 1, percentage: 5.26, abjad_value: 60 },
-        { letter: 'ه', count: 1, percentage: 5.26, abjad_value: 5 },
-        { letter: 'ي', count: 1, percentage: 5.26, abjad_value: 10 },
-      ] : undefined,
-    };
-
-    setResult(mockResult);
-    setIsAnalyzing(false);
+    try {
+      if (inputMode === 'custom') {
+        await analyzeText(customText, letterMethod, abjadSystem);
+      } else if (selectedSurah && selectedAyah) {
+        await analyzeVerse(selectedSurah, selectedAyah, letterMethod, abjadSystem);
+      }
+    } catch (err) {
+      console.error('Analysis failed:', err);
+    }
   };
 
   const handleReset = () => {
-    setResult(null);
+    resetAnalysis();
     setCustomText('');
     setSelectedSurah(null);
     setSelectedAyah(null);
@@ -201,6 +179,18 @@ export default function PlaygroundPage() {
                   Reset
                 </Button>
               </div>
+
+              {/* Error Display */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 flex items-center gap-2 rounded-lg bg-red-500/10 p-4 text-red-500"
+                >
+                  <AlertCircle className="h-5 w-5" />
+                  <p className="text-sm">{error.message || 'Analysis failed. Please try again.'}</p>
+                </motion.div>
+              )}
 
               {/* Results */}
               <AnalysisResults result={result} isLoading={isAnalyzing} />
