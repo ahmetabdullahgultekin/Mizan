@@ -18,15 +18,13 @@ const nextConfig = {
   // Trailing slashes for static hosting
   trailingSlash: true,
 
-  // ESLint - ignore during builds
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
   // TypeScript - continue on errors for now
   typescript: {
     ignoreBuildErrors: false,
   },
+
+  // Turbopack config (Next.js 16 default bundler)
+  turbopack: {},
 
   // Disable server-side features for static export
   experimental: {
@@ -37,17 +35,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-  },
-
-  // Webpack configuration
-  webpack: (config) => {
-    // SVG support
-    config.module.rules.push({
-      test: /\.svg$/,
-      use: ['@svgr/webpack'],
-    });
-
-    return config;
   },
 
   // Headers for security

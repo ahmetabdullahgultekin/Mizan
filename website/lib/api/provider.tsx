@@ -50,7 +50,6 @@ export function useApi() {
     getVerse: client.getVerse.bind(client),
     getSurahList: client.getSurahList.bind(client),
     getSurah: client.getSurah.bind(client),
-    analyze: client.analyze.bind(client),
     analyzeVerse: client.analyzeVerse.bind(client),
     countLetters: client.countLetters.bind(client),
     countWords: client.countWords.bind(client),

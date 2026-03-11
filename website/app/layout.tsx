@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Amiri, Cairo } from 'next/font/google';
 
 import { Providers } from '@/components/providers';
 import { Navbar } from '@/components/layout/navbar';
@@ -8,27 +7,6 @@ import { ScrollToTop } from '@/components/scroll-to-top';
 import { siteConfig } from '@/config/site';
 
 import './globals.css';
-
-// English font
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-// Arabic fonts from Google Fonts
-const amiri = Amiri({
-  subsets: ['arabic'],
-  weight: ['400', '700'],
-  variable: '--font-amiri',
-  display: 'swap',
-});
-
-const cairo = Cairo({
-  subsets: ['arabic'],
-  variable: '--font-cairo',
-  display: 'swap',
-});
 
 // Metadata
 export const metadata: Metadata = {
@@ -105,7 +83,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${amiri.variable} ${cairo.variable}`}
+      className="font-sans"
     >
       <body className="min-h-screen-safe bg-background font-sans antialiased">
         <Providers>
