@@ -10,10 +10,9 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from mizan.api.dependencies import DbSession
+from mizan.api.limiters import limiter
 from mizan.application.dtos.library_requests import SemanticSearchRequest
 from mizan.application.dtos.library_responses import (
     SemanticSearchResponse,
@@ -29,7 +28,6 @@ from mizan.infrastructure.persistence.library_repositories import (
 )
 
 router = APIRouter(prefix="/search")
-limiter = Limiter(key_func=get_remote_address)
 logger = structlog.get_logger(__name__)
 
 

@@ -34,8 +34,12 @@ class ILibrarySpaceRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_all(self) -> list[LibrarySpace]:
-        """Retrieve all library spaces."""
+    async def get_all(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[LibrarySpace]:
+        """Retrieve library spaces with DB-level pagination."""
         ...
 
     @abstractmethod

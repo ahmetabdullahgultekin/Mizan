@@ -36,26 +36,28 @@ async def health_check(
     cache_healthy = await cache.health_check()
 
     # Check embedding service (only if semantic analysis is enabled)
-    embedding_ok = True
+    embedding_ok: bool | None = None
     settings = get_settings()
     if settings.enable_semantic_analysis:
+        embedding_ok = True
         try:
             from mizan.infrastructure.embeddings.factory import get_embedding_service
 
             svc = get_embedding_service()
-            # A zero-length test to verify the service is reachable
             await svc.embed_batch(["health check"])
         except Exception:
             embedding_ok = False
             logger.warning("embedding_service_health_check_failed")
 
-    overall_status = "healthy" if (db_healthy and cache_healthy and embedding_ok) else "degraded"
+    embedding_healthy = embedding_ok is None or embedding_ok
+    overall_status = "healthy" if (db_healthy and cache_healthy and embedding_healthy) else "degraded"
 
     return HealthResponse(
         status=overall_status,
         version=__version__,
         database=db_healthy,
         cache=cache_healthy,
+        embedding=embedding_ok,
         timestamp=datetime.utcnow(),
     )
 

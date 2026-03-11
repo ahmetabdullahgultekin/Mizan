@@ -13,6 +13,10 @@ class HealthResponse(BaseModel):
     version: str = Field(..., description="API version")
     database: bool = Field(..., description="Database connectivity")
     cache: bool = Field(..., description="Cache connectivity")
+    embedding: bool | None = Field(
+        None,
+        description="Embedding service reachable (null when semantic analysis is disabled)",
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

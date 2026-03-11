@@ -13,12 +13,12 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from mizan import __version__
+from mizan.api.limiters import limiter
 from mizan.api.routers import analysis, health, verses
 from mizan.api.routers.library import router as library_router
 from mizan.api.routers.semantic_search import router as semantic_search_router
@@ -28,12 +28,6 @@ from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.persistence.database import close_db, init_db
 
 logger = structlog.get_logger(__name__)
-
-# ---------------------------------------------------------------------------
-# Rate limiter — shared across app
-# ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
-
 
 # ---------------------------------------------------------------------------
 # Lifespan
