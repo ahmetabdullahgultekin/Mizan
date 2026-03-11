@@ -9,6 +9,14 @@ export const navigationConfig = {
       href: '/playground',
     },
     {
+      title: 'Search',
+      href: '/search',
+    },
+    {
+      title: 'Library',
+      href: '/library',
+    },
+    {
       title: 'Documentation',
       href: '/docs',
     },

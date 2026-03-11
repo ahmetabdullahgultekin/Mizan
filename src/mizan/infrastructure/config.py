@@ -131,6 +131,19 @@ class Settings(BaseSettings):
         default="",
         description="Google Gemini API key (required when embedding_provider='gemini')",
     )
+    embedding_fallback_provider: str = Field(
+        default="",
+        description=(
+            "Fallback embedding provider when primary fails. "
+            "Empty string = no fallback. 'local' or 'gemini'. "
+            "IMPORTANT: fallback model must produce vectors with the same dimension "
+            "as the primary model, otherwise stored vectors will be incompatible."
+        ),
+    )
+    embedding_fallback_model: str = Field(
+        default="intfloat/multilingual-e5-base",
+        description="Model name for the fallback provider (must match primary dimension).",
+    )
 
     @field_validator("database_url")
     @classmethod
