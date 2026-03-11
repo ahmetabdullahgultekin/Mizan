@@ -5,7 +5,9 @@
 ## Features
 
 - **Landing Page** - Beautiful animated introduction with live demo
-- **Interactive Playground** - Analyze Quranic text in real-time
+- **Interactive Playground** - Analyze Quranic text in real-time (letter counts, Abjad, word counts)
+- **Semantic Search** (`/search`) - AI-powered meaning-based search across Quran, Tafsir, Hadith
+- **Islamic Library** (`/library`) - Create knowledge spaces, add and index text sources
 - **API Documentation** - Comprehensive docs with code examples
 - **About Page** - Project mission and scholarly standards
 
@@ -67,19 +69,25 @@ npm run build
 website/
 ├── app/                  # Next.js App Router pages
 │   ├── page.tsx         # Landing page
-│   ├── playground/      # Interactive playground
+│   ├── playground/      # Interactive playground (verse + custom text analysis)
+│   ├── search/          # Semantic search page
+│   ├── library/         # Islamic knowledge library management
 │   ├── docs/            # API documentation
 │   └── about/           # About page
 ├── components/
 │   ├── ui/              # Base UI components (shadcn/ui style)
 │   ├── animated/        # Animated components (Aceternity inspired)
 │   ├── landing/         # Landing page sections
-│   ├── playground/      # Playground components
+│   ├── playground/      # Playground components (VerseSelector, ResultDisplay)
+│   ├── library/         # Library components (SpaceCard, AddSourceForm, StatusBadge)
 │   └── layout/          # Layout components (Navbar, Footer)
 ├── hooks/               # Custom React hooks
-├── lib/                 # Utilities and API client
-├── types/               # TypeScript types
-├── config/              # Site configuration
+├── lib/
+│   └── api/client.ts    # API client (analysis, library, semantic search)
+├── types/
+│   └── api.ts           # TypeScript types for all API responses
+├── config/
+│   └── navigation.ts    # Nav links (Home, Playground, Search, Library, Docs, About)
 └── public/              # Static assets
 ```
 

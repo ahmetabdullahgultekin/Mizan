@@ -40,6 +40,9 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis system that p
 | **Verse Navigation** | Full Quran traversal with validation | ✅ Complete |
 | **Text Integrity** | SHA-256/512 checksums for verification | ✅ Complete |
 | **Multi-Script Support** | Uthmani, Simple (Imla'i), Uthmani-min | ✅ Complete |
+| **Islamic Knowledge Library** | Manage and index Quran, Tafsir, Hadith sources | ✅ Complete |
+| **Semantic Search** | AI-powered meaning-based search across all indexed texts | ✅ Complete |
+| **Verse Similarity** | Find similar verses using embedding vectors | ✅ Complete |
 
 ### Verified Against Global Standards
 
@@ -98,6 +101,12 @@ export REDIS_URL=redis://localhost:6379/0
 # Run database migrations
 alembic upgrade head
 
+# Seed Quran text (114 surahs + 6,236 verses)
+python scripts/ingest_tanzil.py
+
+# Generate verse embeddings (optional — required for semantic search)
+python scripts/embed_quran.py
+
 # Start the API server
 uvicorn mizan.api.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -120,20 +129,30 @@ curl http://localhost:8000/health
 GET /health
 ```
 
-Returns service health status and version information.
+Returns service health status, embedding mode, and version information.
 
 ### Verse Retrieval
 
 ```http
 GET /api/v1/verses/{surah}/{verse}
+GET /api/v1/surahs
 ```
 
-Retrieve a specific verse with full metadata.
+Retrieve verses and surah metadata.
 
 **Example:**
 ```bash
 curl http://localhost:8000/api/v1/verses/1/1
+curl http://localhost:8000/api/v1/surahs
 ```
+
+### Verse Analysis
+
+```http
+GET /api/v1/analysis/verse/{surah}/{verse}
+```
+
+Full analysis of a verse: letter counts, word counts, Abjad values, letter frequency.
 
 ### Letter Analysis
 
@@ -170,6 +189,43 @@ curl "http://localhost:8000/api/v1/analysis/abjad?text=الله"
 # Returns: {"value": 66, "system": "mashriqi", ...}
 ```
 
+### Islamic Knowledge Library
+
+```http
+POST   /api/v1/library/spaces                    # Create a library space
+GET    /api/v1/library/spaces                    # List all spaces
+POST   /api/v1/library/spaces/{id}/sources       # Add a text source
+GET    /api/v1/library/sources/{id}              # Source detail + indexing status
+POST   /api/v1/library/sources/{id}/index        # Start indexing (async)
+DELETE /api/v1/library/sources/{id}              # Delete source and its chunks
+```
+
+### Semantic Search
+
+```http
+POST /api/v1/search/semantic
+```
+
+Search Islamic texts by meaning — not just keywords.
+
+**Request body:**
+```json
+{
+  "query": "mercy and forgiveness",
+  "source_types": ["QURAN", "TAFSIR"],
+  "limit": 10,
+  "min_similarity": 0.70
+}
+```
+
+### Verse Similarity
+
+```http
+GET /api/v1/verses/{surah}/{verse}/similar?limit=5
+```
+
+Find semantically similar verses using embedding vectors.
+
 ### Word Count
 
 ```http
@@ -185,20 +241,25 @@ Mizan follows **Hexagonal Architecture** (Ports & Adapters) with strict separati
 ```
 src/mizan/
 ├── domain/           # Core business logic (no external dependencies)
-│   ├── entities/     # Verse, Surah entities
-│   ├── enums/        # Type-safe enumerations
-│   ├── services/     # Domain services (Abjad, Letter counting)
+│   ├── entities/     # Verse, Surah, LibrarySpace, TextSource, TextChunk
+│   ├── enums/        # Type-safe enumerations (SourceType, IndexingStatus, …)
+│   ├── services/     # AbjadCalculator, LetterCounter, IEmbeddingService (port)
 │   ├── value_objects/# Immutable value objects
 │   └── repositories/ # Repository interfaces (ports)
 ├── application/      # Use cases and DTOs
 │   ├── dtos/         # Request/Response objects
-│   └── services/     # Application services
+│   └── services/     # library_service, indexing_service, semantic_search_service
 ├── infrastructure/   # External adapters
-│   ├── persistence/  # Database implementation
+│   ├── embeddings/   # SentenceTransformer, Gemini, CascadeEmbeddingService, factory
+│   ├── persistence/  # Database models + repository implementations
 │   ├── cache/        # Redis implementation
 │   └── text/         # Text processing utilities
 └── api/              # FastAPI REST interface
-    └── routers/      # API endpoints
+    └── routers/      # verses, analysis, library, semantic_search
+
+scripts/
+├── ingest_tanzil.py  # Populate surahs + verses tables from Tanzil XML
+└── embed_quran.py    # Generate verse embeddings (batch)
 ```
 
 ## Configuration
@@ -211,6 +272,11 @@ src/mizan/
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `API_PREFIX` | API route prefix | `/api/v1` |
+| `EMBEDDING_PROVIDER` | Embedding backend: `local` or `gemini` | `local` |
+| `EMBEDDING_MODEL` | Model name for primary provider | `intfloat/multilingual-e5-base` |
+| `EMBEDDING_FALLBACK_PROVIDER` | Fallback provider (empty = disabled) | `""` |
+| `EMBEDDING_FALLBACK_MODEL` | Model name for fallback provider | `intfloat/multilingual-e5-base` |
+| `GEMINI_API_KEY` | Google Gemini API key (if using Gemini) | `""` |
 
 ### Letter Counting Methods
 
