@@ -25,7 +25,8 @@ class AddTextSourceRequest(BaseModel):
     content: str = Field(
         ...,
         min_length=1,
-        description="Full text content to index",
+        max_length=500_000,
+        description="Full text content to index (max 500,000 characters)",
     )
 
 

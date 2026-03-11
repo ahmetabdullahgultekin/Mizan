@@ -2,14 +2,17 @@
 
 from datetime import datetime
 
+import structlog
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
 from mizan import __version__
 from mizan.api.dependencies import Cache, DbSession
 from mizan.application.dtos.responses import HealthResponse
+from mizan.infrastructure.config import get_settings
 
 router = APIRouter()
+logger = structlog.get_logger(__name__)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -20,7 +23,7 @@ async def health_check(
     """
     Check service health.
 
-    Verifies database and cache connectivity.
+    Verifies database, cache, and embedding service connectivity.
     """
     # Check database
     db_healthy = True
@@ -32,13 +35,29 @@ async def health_check(
     # Check cache
     cache_healthy = await cache.health_check()
 
-    status = "healthy" if (db_healthy and cache_healthy) else "degraded"
+    # Check embedding service (only if semantic analysis is enabled)
+    embedding_ok: bool | None = None
+    settings = get_settings()
+    if settings.enable_semantic_analysis:
+        embedding_ok = True
+        try:
+            from mizan.infrastructure.embeddings.factory import get_embedding_service
+
+            svc = get_embedding_service()
+            await svc.embed_batch(["health check"])
+        except Exception:
+            embedding_ok = False
+            logger.warning("embedding_service_health_check_failed")
+
+    embedding_healthy = embedding_ok is None or embedding_ok
+    overall_status = "healthy" if (db_healthy and cache_healthy and embedding_healthy) else "degraded"
 
     return HealthResponse(
-        status=status,
+        status=overall_status,
         version=__version__,
         database=db_healthy,
         cache=cache_healthy,
+        embedding=embedding_ok,
         timestamp=datetime.utcnow(),
     )
 

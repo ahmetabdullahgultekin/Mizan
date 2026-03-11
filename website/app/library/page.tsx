@@ -284,6 +284,7 @@ function LibrarySpaceCard({ space, onDeleted }: {
             onClick={handleDeleteSpace}
             disabled={isDeletingSpace}
             title="Delete this library"
+            aria-label="Delete this library"
           >
             {isDeletingSpace
               ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -354,6 +355,7 @@ function LibrarySpaceCard({ space, onDeleted }: {
                         className="h-8 w-8 p-0"
                         onClick={() => handleReindex(src.id)}
                         title="Retry indexing"
+                        aria-label="Retry indexing this source"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
@@ -364,6 +366,7 @@ function LibrarySpaceCard({ space, onDeleted }: {
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       onClick={() => handleDeleteSource(src.id)}
                       title="Delete source"
+                      aria-label="Delete this source"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -45,9 +45,9 @@ class LibraryService:
         """Get a library space by ID."""
         return await self._spaces.get_by_id(space_id)
 
-    async def list_spaces(self) -> list[LibrarySpace]:
-        """List all library spaces."""
-        return await self._spaces.get_all()
+    async def list_spaces(self, limit: int = 100, offset: int = 0) -> list[LibrarySpace]:
+        """List library spaces with pagination."""
+        return await self._spaces.get_all(limit=limit, offset=offset)
 
     async def delete_space(self, space_id: UUID) -> bool:
         """Delete a library space and all its sources/chunks."""

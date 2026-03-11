@@ -207,8 +207,9 @@ export default function SearchPage() {
             ))}
 
             <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Min similarity:</span>
+              <label htmlFor="min-similarity">Min similarity:</label>
               <input
+                id="min-similarity"
                 type="range"
                 min={0.5}
                 max={0.95}
@@ -216,8 +217,13 @@ export default function SearchPage() {
                 value={minSimilarity}
                 onChange={(e) => setMinSimilarity(parseFloat(e.target.value))}
                 className="w-24 accent-gold-500"
+                aria-label="Minimum similarity threshold"
+                aria-valuenow={Math.round(minSimilarity * 100)}
+                aria-valuemin={50}
+                aria-valuemax={95}
+                aria-valuetext={`${Math.round(minSimilarity * 100)}% minimum similarity`}
               />
-              <span className="tabular-nums w-10">{Math.round(minSimilarity * 100)}%</span>
+              <span className="tabular-nums w-10" aria-live="polite">{Math.round(minSimilarity * 100)}%</span>
             </div>
           </div>
         </form>

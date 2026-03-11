@@ -58,6 +58,9 @@ dependencies = [
     # Logging
     "structlog>=24.1.0",
 
+    # Rate limiting
+    "slowapi>=0.1.9",
+
     # Arabic NLP (Tier 1-2)
     "pyarabic>=0.6.15",
     "regex>=2023.12.0",
@@ -81,6 +84,12 @@ dev = [
     "mypy>=1.8.0",
     "ruff>=0.1.9",
     "pre-commit>=3.6.0",
+]
+
+# Error tracking and metrics (optional — enable in production by installing this extra)
+observability = [
+    "sentry-sdk[fastapi]>=2.0.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
 ]
 
 # Minimal install without ML dependencies (for basic text analysis)

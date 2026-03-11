@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,8 @@ const AuroraBackgroundComponent = ({
   children,
   showRadialGradient = true,
 }: AuroraBackgroundProps) => {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <div
       className={cn(
@@ -51,11 +53,11 @@ const AuroraBackgroundComponent = ({
         )}
       </div>
 
-      {/* Content - Minimal fade-in animation */}
+      {/* Content - Fade-in animation (skipped when prefers-reduced-motion) */}
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
         className="relative z-10"
       >
         {children}

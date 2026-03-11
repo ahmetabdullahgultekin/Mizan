@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Amiri, Cairo } from 'next/font/google';
 
 import { Providers } from '@/components/providers';
 import { Navbar } from '@/components/layout/navbar';
@@ -7,6 +8,29 @@ import { ScrollToTop } from '@/components/scroll-to-top';
 import { siteConfig } from '@/config/site';
 
 import './globals.css';
+
+// ---------------------------------------------------------------------------
+// Font loading via next/font (build-time, no render-blocking @import)
+// ---------------------------------------------------------------------------
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
+
+const amiri = Amiri({
+  subsets: ['arabic', 'latin'],
+  weight: ['400', '700'],
+  display: 'swap',
+  variable: '--font-amiri',
+});
+
+const cairo = Cairo({
+  subsets: ['arabic', 'latin'],
+  display: 'swap',
+  variable: '--font-cairo',
+});
 
 // Metadata
 export const metadata: Metadata = {
@@ -83,7 +107,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html
       lang="en"
       suppressHydrationWarning
-      className="font-sans"
+      className={`font-sans ${inter.variable} ${amiri.variable} ${cairo.variable}`}
     >
       <body className="min-h-screen-safe bg-background font-sans antialiased">
         <Providers>

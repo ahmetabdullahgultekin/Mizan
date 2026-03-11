@@ -16,11 +16,11 @@ Recommended combinations:
 
 from __future__ import annotations
 
-import logging
+import structlog
 
 from mizan.domain.services.embedding_service import IEmbeddingService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CascadeEmbeddingService(IEmbeddingService):
@@ -32,10 +32,10 @@ class CascadeEmbeddingService(IEmbeddingService):
     """
 
     def __init__(self, primary: IEmbeddingService, fallback: IEmbeddingService) -> None:
-        if primary.dimension != fallback.dimension:
+        if primary.embedding_dimension != fallback.embedding_dimension:
             raise ValueError(
-                f"Primary ({primary.model_name}, dim={primary.dimension}) and "
-                f"fallback ({fallback.model_name}, dim={fallback.dimension}) must "
+                f"Primary ({primary.model_name}, dim={primary.embedding_dimension}) and "
+                f"fallback ({fallback.model_name}, dim={fallback.embedding_dimension}) must "
                 f"have matching embedding dimensions. Vectors would be incompatible."
             )
         self._primary = primary
@@ -47,8 +47,8 @@ class CascadeEmbeddingService(IEmbeddingService):
     # ------------------------------------------------------------------
 
     @property
-    def dimension(self) -> int:
-        return self._primary.dimension
+    def embedding_dimension(self) -> int:
+        return self._primary.embedding_dimension
 
     @property
     def model_name(self) -> str:
@@ -57,37 +57,24 @@ class CascadeEmbeddingService(IEmbeddingService):
         return self._primary.model_name
 
     async def embed_text(self, text: str) -> list[float]:
-        try:
-            result = await self._primary.embed_text(text)
-            self._using_fallback = False
-            return result
-        except Exception as exc:
-            logger.warning(
-                "Primary embedding service failed (%s). "
-                "Falling back to %s. Error: %s",
-                self._primary.model_name,
-                self._fallback.model_name,
-                exc,
-            )
-            self._using_fallback = True
-            return await self._fallback.embed_text(text)
+        results = await self.embed_batch([text])
+        return results[0]
 
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         try:
-            result = await self._primary.embed_texts(texts)
+            result = await self._primary.embed_batch(texts)
             self._using_fallback = False
             return result
         except Exception as exc:
             logger.warning(
-                "Primary embedding service failed for batch of %d texts (%s). "
-                "Falling back to %s. Error: %s",
-                len(texts),
-                self._primary.model_name,
-                self._fallback.model_name,
-                exc,
+                "primary_embedding_failed",
+                primary_model=self._primary.model_name,
+                fallback_model=self._fallback.model_name,
+                batch_size=len(texts),
+                error=str(exc),
             )
             self._using_fallback = True
-            return await self._fallback.embed_texts(texts)
+            return await self._fallback.embed_batch(texts)
 
     # ------------------------------------------------------------------
     # Status helpers (for health endpoint)
@@ -105,3 +92,8 @@ class CascadeEmbeddingService(IEmbeddingService):
     @property
     def fallback_model(self) -> str:
         return self._fallback.model_name
+
+    # Keep legacy alias for any code that accessed `.dimension` directly
+    @property
+    def dimension(self) -> int:
+        return self.embedding_dimension

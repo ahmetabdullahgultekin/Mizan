@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
+import structlog
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,9 @@ from mizan.infrastructure.persistence.models import (
     TextSourceModel,
     VerseEmbeddingModel,
 )
+
+
+logger = structlog.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +116,7 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         )
         self._session.add(model)
         await self._session.flush()
+        logger.info("library_space_created", space_id=str(space.id), name=space.name)
         return space
 
     async def get_by_id(self, space_id: UUID) -> LibrarySpace | None:
@@ -121,17 +126,27 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         model = result.scalar_one_or_none()
         return _space_to_domain(model) if model else None
 
-    async def get_all(self) -> list[LibrarySpace]:
-        result = await self._session.execute(
-            select(LibrarySpaceModel).order_by(LibrarySpaceModel.created_at)
+    async def get_all(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[LibrarySpace]:
+        stmt = (
+            select(LibrarySpaceModel)
+            .order_by(LibrarySpaceModel.created_at)
+            .offset(offset)
+            .limit(limit)
         )
+        result = await self._session.execute(stmt)
         return [_space_to_domain(m) for m in result.scalars().all()]
 
     async def delete(self, space_id: UUID) -> bool:
         result = await self._session.execute(
             delete(LibrarySpaceModel).where(LibrarySpaceModel.id == space_id)
         )
-        return result.rowcount > 0
+        found = result.rowcount > 0
+        logger.info("library_space_deleted", space_id=str(space_id), found=found)
+        return found
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +160,8 @@ class PostgresTextSourceRepository(ITextSourceRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, source: TextSource) -> TextSource:
+    async def create(self, source: TextSource) -> TextSource:  # type: ignore[override]
+        logger.info("text_source_creating", source_id=str(source.id), source_type=source.source_type.value)
         model = TextSourceModel(
             id=source.id,
             library_space_id=source.library_space_id,
@@ -163,6 +179,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         )
         self._session.add(model)
         await self._session.flush()
+        logger.info("text_source_created", source_id=str(source.id))
         return source
 
     async def get_by_id(self, source_id: UUID) -> TextSource | None:
@@ -404,6 +421,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         for ve in embeddings:
             await self.upsert(ve)
         await self._session.flush()
+        logger.debug("verse_embeddings_upserted", count=len(embeddings))
         return len(embeddings)
 
     async def get_by_verse(
@@ -473,3 +491,17 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
         result = await self._session.execute(stmt)
         return result.scalar_one()
+
+    async def get_embedded_verse_keys(
+        self, model_name: str | None = None
+    ) -> set[tuple[int, int]]:
+        """Return a set of (surah_number, verse_number) for already-embedded verses.
+
+        Used by embed_quran.py to skip verses that already have embeddings,
+        enabling checkpoint/resume on interrupted embedding runs.
+        """
+        stmt = select(VerseEmbeddingModel.surah_number, VerseEmbeddingModel.verse_number)
+        if model_name:
+            stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
+        result = await self._session.execute(stmt)
+        return {(int(row.surah_number), int(row.verse_number)) for row in result.fetchall()}

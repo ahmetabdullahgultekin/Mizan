@@ -10,7 +10,7 @@ This improves retrieval quality significantly for Arabic and multilingual text.
 
 from __future__ import annotations
 
-import logging
+import structlog
 from uuid import UUID, uuid4
 from datetime import datetime
 
@@ -30,7 +30,7 @@ from mizan.infrastructure.chunking.chunking_strategies import (
     VerseChunker,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Prefix for e5-style models (improves retrieval quality)
 PASSAGE_PREFIX = "passage: "
@@ -78,6 +78,15 @@ class IndexingService:
         Returns:
             Number of chunks indexed
         """
+        # Idempotency guard — prevent concurrent duplicate indexing runs
+        existing = await self._sources.get_by_id(source_id)
+        if existing is not None and existing.status == IndexingStatus.INDEXING:
+            logger.warning(
+                "indexing_already_in_progress",
+                source_id=str(source_id),
+            )
+            return 0
+
         # Mark as indexing
         await self._sources.update_status(
             source_id,
@@ -130,10 +139,10 @@ class IndexingService:
                     indexed_chunks=indexed,
                 )
                 logger.info(
-                    "Indexed %d/%d chunks for source %s",
-                    indexed,
-                    len(domain_chunks),
-                    source_id,
+                    "indexed_chunks",
+                    indexed=indexed,
+                    total=len(domain_chunks),
+                    source_id=str(source_id),
                 )
 
             # 4. Mark as fully indexed
@@ -148,7 +157,7 @@ class IndexingService:
             return indexed
 
         except Exception:
-            logger.exception("Failed to index source %s", source_id)
+            logger.exception("indexing_failed", source_id=str(source_id))
             await self._sources.update_status(
                 source_id, status=IndexingStatus.FAILED
             )
@@ -187,22 +196,43 @@ class QuranEmbeddingIndexer:
     async def embed_all_verses(
         self,
         surah_number: int | None = None,
+        skip_existing: bool = False,
     ) -> int:
         """
         Generate and store embeddings for all Quran verses (or one surah).
 
         Args:
             surah_number: If provided, only embed verses of this surah
+            skip_existing: If True, skip verses that already have embeddings
+                           (enables checkpoint/resume for interrupted runs)
 
         Returns:
-            Number of verses embedded
+            Number of verses newly embedded
         """
         # Stream verses for memory efficiency (6236 verses total)
         verses = []
         async for verse in self._quran.stream_verses(surah_number=surah_number):
             verses.append(verse)
 
-        logger.info("Starting embedding for %d verses", len(verses))
+        # Checkpoint/resume: filter out already-embedded verses
+        if skip_existing:
+            from mizan.infrastructure.persistence.library_repositories import (
+                PostgresVerseEmbeddingRepository,
+            )
+            if isinstance(self._verse_embs, PostgresVerseEmbeddingRepository):
+                existing_keys = await self._verse_embs.get_embedded_verse_keys(
+                    model_name=self._embedder.model_name
+                )
+                before_count = len(verses)
+                verses = [
+                    v for v in verses
+                    if (v.location.surah_number, v.location.verse_number) not in existing_keys
+                ]
+                skipped = before_count - len(verses)
+                if skipped:
+                    logger.info("skipping_embedded_verses", skipped=skipped)
+
+        logger.info("embedding_verses_start", verse_count=len(verses))
 
         embedded = 0
         for i in range(0, len(verses), self._batch_size):
@@ -225,6 +255,6 @@ class QuranEmbeddingIndexer:
 
             await self._verse_embs.upsert_batch(verse_embeddings)
             embedded += len(batch)
-            logger.info("Embedded %d/%d verses", embedded, len(verses))
+            logger.info("embedded_verses_progress", embedded=embedded, total=len(verses))
 
         return embedded
