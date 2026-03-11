@@ -7,9 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - Unreleased
+
 ### Added
-- Initial public release preparation
-- Comprehensive documentation
+
+#### Islamic Knowledge Library (Tier 4)
+- **`LibrarySpace`** entity — named collection for grouping text sources
+- **`TextSource`** entity — tracks indexing status (PENDING / INDEXING / INDEXED / FAILED)
+- **`TextChunk`** entity — individual passages with `VECTOR(768)` embedding column (pgvector)
+- **`VerseEmbedding`** entity — separate embedding storage for Quran verses (linked to existing `verses` table)
+- New library management API: `POST /api/v1/library/spaces`, `GET /api/v1/library/spaces`, `POST/GET/DELETE /api/v1/library/sources`
+
+#### Semantic Search
+- `POST /api/v1/search/semantic` — meaning-based search across all indexed texts
+- `GET /api/v1/verses/{surah}/{verse}/similar` — find semantically similar verses
+- Configurable `min_similarity` threshold and `source_types` filter (QURAN / TAFSIR / HADITH / OTHER)
+
+#### Embedding Infrastructure
+- `IEmbeddingService` interface (port) in domain layer
+- `SentenceTransformerEmbeddingService` — local multilingual model (`intfloat/multilingual-e5-base`, 768-dim)
+- `GeminiEmbeddingService` — Google Gemini Embedding API (`models/text-embedding-004`, 768-dim)
+- `CascadeEmbeddingService` — transparent primary → fallback with dimension-mismatch guard
+- `get_embedding_service()` factory (lru_cache singleton) + `get_embedding_status()` for health endpoint
+- New config fields: `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_FALLBACK_PROVIDER`, `EMBEDDING_FALLBACK_MODEL`, `GEMINI_API_KEY`
+
+#### Data Pipeline Scripts
+- `scripts/ingest_tanzil.py` — self-contained script to populate `surahs` (114 rows) and `verses` (6,236 rows) from Tanzil XML; embeds all surah metadata, juz/hizb/manzil boundaries, and sajdah verses
+- `scripts/embed_quran.py` — batch-generate `VerseEmbedding` records for all 6,236 verses
+
+#### Frontend Pages
+- `/search` — semantic search UI: Arabic-aware input, source-type toggles, similarity slider (50–95%), animated result cards with colour-coded similarity scores
+- `/library` — library management UI: create spaces, add text sources with full metadata, trigger indexing, retry/delete sources with live status badges
+
+#### Frontend — API Client & Types
+- `website/lib/api/client.ts`: added `createLibrarySpace()`, `listLibrarySpaces()`, `addTextSource()`, `getTextSource()`, `indexTextSource()`, `deleteTextSource()`, `semanticSearch()`, `findSimilarVerses()`
+- `website/types/api.ts`: added `VerseAnalysisResponse`, `SourceType`, `IndexingStatus`, `LibrarySpaceResponse`, `TextSourceResponse`, `AddTextSourceRequest`, `SemanticSearchRequest`, `SemanticSearchResponse`
+- Navigation updated: `Search` and `Library` links added to main navbar
+
+#### Frontend — Playground Improvements
+- Verse selector now loads all 114 surahs dynamically from `GET /api/v1/surahs` (graceful fallback to static list)
+- Removed mock 1.5 s delay; playground calls `analyzeVerse()` + `calculateAbjad()` against live API
+
+### Fixed
+- `client.ts` `getSurahList()`: backend returns plain array, not `{surahs, total}` — mapping corrected
+- `client.ts` `analyzeVerse()`: URL was `/api/v1/analyze/verse/` → corrected to `/api/v1/analysis/verse/${surah}/${verse}`
 
 ## [0.1.0] - 2025-01-XX
 

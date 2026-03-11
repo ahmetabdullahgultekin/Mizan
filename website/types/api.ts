@@ -111,6 +111,104 @@ export interface ValidationError {
 }
 
 // ==========================================
+// Verse Analysis Response (from /api/v1/analysis/verse/{surah}/{verse})
+// ==========================================
+
+export interface VerseAnalysisResponse {
+  location: string;           // e.g. "1:1"
+  letters: {
+    count: number;
+    scope: string;
+    methodology: string;
+  };
+  words: {
+    count: number;
+    scope: string;
+    methodology: string;
+  };
+  abjad: {
+    value: number;
+    system: string;
+    text_analyzed: string;
+    is_prime: boolean;
+    digital_root: number;
+    breakdown?: LetterBreakdown[];
+  };
+  letter_frequency: {
+    total_items: number;
+    unique_items: number;
+    distribution: Record<string, number>;
+    top_items: Array<{ letter: string; count: number; percentage: number }>;
+  };
+}
+
+// ==========================================
+// Library & Semantic Search Types
+// ==========================================
+
+export type SourceType = 'QURAN' | 'TAFSIR' | 'HADITH' | 'OTHER';
+export type IndexingStatus = 'PENDING' | 'INDEXING' | 'INDEXED' | 'FAILED';
+
+export interface LibrarySpaceResponse {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  sources?: TextSourceResponse[];
+}
+
+export interface CreateLibrarySpaceRequest {
+  name: string;
+  description?: string;
+}
+
+export interface TextSourceResponse {
+  id: string;
+  library_space_id: string;
+  source_type: SourceType;
+  title_arabic?: string;
+  title_turkish?: string;
+  title_english?: string;
+  author?: string;
+  status: IndexingStatus;
+  total_chunks: number;
+  indexed_chunks: number;
+  embedding_model?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AddTextSourceRequest {
+  source_type: SourceType;
+  title_arabic?: string;
+  title_turkish?: string;
+  title_english?: string;
+  author?: string;
+  content: string;          // raw text to index
+}
+
+export interface SemanticSearchRequest {
+  query: string;
+  library_space_id?: string;
+  source_types?: SourceType[];
+  limit?: number;
+  min_similarity?: number;
+}
+
+export interface SemanticSearchResponse {
+  chunk_content: string;
+  reference: string;
+  similarity_score: number;
+  source: {
+    id: string;
+    title: string;
+    source_type: SourceType;
+    author?: string;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+// ==========================================
 // Utility Types
 // ==========================================
 

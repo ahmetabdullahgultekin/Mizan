@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from mizan import __version__
 from mizan.api.routers import analysis, health, verses
+from mizan.api.routers.library import router as library_router
+from mizan.api.routers.semantic_search import router as semantic_search_router
 from mizan.infrastructure.cache.redis_cache import close_cache, get_cache
 from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.persistence.database import close_db, init_db
@@ -53,8 +55,8 @@ def create_app() -> FastAPI:
         ),
         version=__version__,
         lifespan=lifespan,
-        docs_url="/docs" if settings.debug else None,
-        redoc_url="/redoc" if settings.debug else None,
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
 
     # CORS middleware
@@ -70,6 +72,19 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["Health"])
     app.include_router(verses.router, prefix="/api/v1", tags=["Verses"])
     app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
+
+    # Tier 4: Islamic Knowledge Library + Semantic Search
+    if settings.enable_semantic_analysis:
+        app.include_router(
+            library_router,
+            prefix="/api/v1",
+            tags=["Library"],
+        )
+        app.include_router(
+            semantic_search_router,
+            prefix="/api/v1",
+            tags=["Semantic Search"],
+        )
 
     return app
 

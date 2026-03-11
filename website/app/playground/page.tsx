@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/playground';
 import { Spotlight } from '@/components/animated/spotlight';
 import { GlowingOrbs } from '@/components/animated/floating-particles';
-import type { LetterCountMethod, AbjadSystem, AnalysisResponse } from '@/types/api';
+import { getApiClient } from '@/lib/api/client';
+import type { LetterCountMethod, AbjadSystem, AnalysisResponse, VerseAnalysisResponse } from '@/types/api';
 
 /**
  * Playground Page
@@ -31,41 +32,65 @@ export default function PlaygroundPage() {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [result, setResult] = React.useState<AnalysisResponse | null>(null);
 
-  // Mock analysis function (in production, this would call the API)
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResult(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const client = getApiClient();
 
-    // Mock result based on input
-    const text = inputMode === 'custom' ? customText : 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+      if (inputMode === 'verse' && selectedSurah && selectedAyah) {
+        // Real API call — verse analysis
+        const raw: VerseAnalysisResponse = await client.analyzeVerse(selectedSurah, selectedAyah);
 
-    // Simple mock calculation
-    const mockResult: AnalysisResponse = {
-      text,
-      letter_count: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 19 : Math.floor(text.length * 0.6),
-      word_count: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 4 : text.split(' ').filter(Boolean).length,
-      abjad_value: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? 786 : Math.floor(Math.random() * 1000) + 100,
-      letter_method: letterMethod,
-      abjad_system: abjadSystem,
-      breakdown: text === 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' ? [
-        { letter: 'ا', count: 3, percentage: 15.79, abjad_value: 1 },
-        { letter: 'ل', count: 4, percentage: 21.05, abjad_value: 30 },
-        { letter: 'ر', count: 2, percentage: 10.53, abjad_value: 200 },
-        { letter: 'ح', count: 2, percentage: 10.53, abjad_value: 8 },
-        { letter: 'م', count: 3, percentage: 15.79, abjad_value: 40 },
-        { letter: 'ن', count: 1, percentage: 5.26, abjad_value: 50 },
-        { letter: 'ب', count: 1, percentage: 5.26, abjad_value: 2 },
-        { letter: 'س', count: 1, percentage: 5.26, abjad_value: 60 },
-        { letter: 'ه', count: 1, percentage: 5.26, abjad_value: 5 },
-        { letter: 'ي', count: 1, percentage: 5.26, abjad_value: 10 },
-      ] : undefined,
-    };
+        // Map backend VerseAnalysisResponse → AnalysisResponse for the UI
+        const breakdown = raw.letter_frequency?.top_items?.map((item) => ({
+          letter: item.letter,
+          count: item.count,
+          percentage: item.percentage,
+          abjad_value: raw.abjad.breakdown?.find((b) => b.letter === item.letter)?.abjad_value,
+        }));
 
-    setResult(mockResult);
-    setIsAnalyzing(false);
+        setResult({
+          text: raw.location,
+          letter_count: raw.letters.count,
+          word_count: raw.words.count,
+          abjad_value: raw.abjad.value,
+          letter_method: letterMethod,
+          abjad_system: abjadSystem,
+          breakdown,
+          metadata: { surah: selectedSurah, ayah: selectedAyah },
+        });
+      } else {
+        // Custom text: use the Abjad endpoint (accepts ?text=...) for value + breakdown;
+        // count letters/words client-side (no backend endpoint for arbitrary text yet).
+        const abjadRes = await client.calculateAbjad({
+          text: customText,
+          system: abjadSystem,
+          include_breakdown: true,
+        });
+
+        const arabicLetters = /[\u0621-\u063A\u0641-\u064A\u0671]/g;
+        const letterMatches = customText.replace(/[\u064B-\u065F\u0670]/g, '').match(arabicLetters);
+        const letterCount = letterMatches?.length ?? 0;
+        const wordCount = customText.trim().split(/\s+/).filter(Boolean).length;
+
+        setResult({
+          text: customText,
+          letter_count: letterCount,
+          word_count: wordCount,
+          abjad_value: abjadRes.value,
+          letter_method: letterMethod,
+          abjad_system: abjadSystem,
+          breakdown: abjadRes.breakdown,
+        });
+      }
+    } catch {
+      // API unreachable — show a user-friendly error via result placeholder
+      setResult(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleReset = () => {

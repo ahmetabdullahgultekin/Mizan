@@ -41,7 +41,7 @@ services:
       - mizan-network
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: mizan-db
     ports:
       - "5432:5432"
