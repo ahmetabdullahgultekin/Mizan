@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -21,6 +21,16 @@ import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations/varian
  * floating particles, and call-to-action buttons.
  */
 export function Hero() {
+  const prefersReducedMotion = useReducedMotion();
+
+  // When the user prefers reduced motion, skip stagger animations and show content immediately.
+  const containerVariants = prefersReducedMotion
+    ? { hidden: { opacity: 1 }, visible: { opacity: 1 } }
+    : staggerContainer;
+  const itemVariants = prefersReducedMotion
+    ? { hidden: { opacity: 1 }, visible: { opacity: 1 } }
+    : staggerItem;
+
   return (
     <section className="relative min-h-screen overflow-hidden pt-20">
       {/* Background Effects */}
@@ -30,13 +40,13 @@ export function Hero() {
       {/* Content */}
       <div className="container relative z-10 mx-auto px-4 py-20 md:py-32">
         <motion.div
-          variants={staggerContainer}
+          variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="mx-auto max-w-4xl text-center"
         >
           {/* Badge */}
-          <motion.div variants={staggerItem}>
+          <motion.div variants={itemVariants}>
             <Badge variant="glass" className="mb-6 px-4 py-1.5">
               <Sparkles className="mr-2 h-3 w-3 text-gold-500" />
               <span>Open Source Quranic Analysis Engine</span>
@@ -44,7 +54,7 @@ export function Hero() {
           </motion.div>
 
           {/* Arabic Bismillah */}
-          <motion.div variants={staggerItem} className="mb-8">
+          <motion.div variants={itemVariants} className="mb-8">
             <ArabicTextGenerate
               text="بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
               className="text-arabic-2xl text-gradient-gold"
@@ -54,7 +64,7 @@ export function Hero() {
 
           {/* Main Heading */}
           <motion.h1
-            variants={staggerItem}
+            variants={itemVariants}
             className="mb-6 text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl"
           >
             <span className="text-foreground">Discover the </span>
@@ -65,7 +75,7 @@ export function Hero() {
 
           {/* Subheading */}
           <motion.p
-            variants={staggerItem}
+            variants={itemVariants}
             className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl"
           >
             High-precision letter counting, word analysis, and Abjad calculations.
@@ -75,7 +85,7 @@ export function Hero() {
 
           {/* CTA Buttons */}
           <motion.div
-            variants={staggerItem}
+            variants={itemVariants}
             className="mb-12 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <SpotlightButton className="group px-8 py-4 text-base">
@@ -95,7 +105,7 @@ export function Hero() {
 
           {/* Stats */}
           <motion.div
-            variants={staggerItem}
+            variants={itemVariants}
             className="grid grid-cols-2 gap-4 md:grid-cols-4"
           >
             <StatItem value={6236} label="Total Verses" />
@@ -108,20 +118,20 @@ export function Hero() {
 
       {/* Scroll indicator - centered */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: prefersReducedMotion ? 1 : 0, y: prefersReducedMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.5, duration: 0.5 }}
+        transition={{ delay: prefersReducedMotion ? 0 : 1.5, duration: prefersReducedMotion ? 0 : 0.5 }}
         className="absolute bottom-8 left-0 right-0 flex justify-center"
       >
         <motion.div
-          animate={{ y: [0, 8, 0] }}
+          animate={prefersReducedMotion ? {} : { y: [0, 8, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
           className="flex flex-col items-center text-muted-foreground"
         >
           <span className="mb-2 text-xs">Scroll to explore</span>
           <div className="flex h-8 w-5 items-start justify-center rounded-full border-2 border-muted-foreground/30 pt-1">
             <motion.div
-              animate={{ y: [0, 10, 0] }}
+              animate={prefersReducedMotion ? {} : { y: [0, 10, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
               className="h-2 w-1.5 rounded-full bg-gold-500"
             />

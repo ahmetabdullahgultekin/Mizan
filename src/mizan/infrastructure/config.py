@@ -156,6 +156,21 @@ class Settings(BaseSettings):
         description="Model name for the fallback provider (must match primary dimension).",
     )
 
+    # ==========================================================================
+    # Observability — Sentry
+    # ==========================================================================
+    sentry_dsn: str = Field(
+        default="",
+        description=(
+            "Sentry DSN for error tracking. "
+            "Empty string disables Sentry (default for local dev)."
+        ),
+    )
+    sentry_environment: str = Field(
+        default="development",
+        description="Sentry environment tag (e.g. 'production', 'staging', 'development')",
+    )
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, v: str) -> str:

@@ -27,6 +27,30 @@ from mizan.infrastructure.cache.redis_cache import close_cache, get_cache
 from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.persistence.database import close_db, init_db
 
+
+def _init_sentry() -> None:
+    """Initialise Sentry error tracking if SENTRY_DSN is configured."""
+    settings = get_settings()
+    if not settings.sentry_dsn:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.asgi import SentryAsgiMiddleware  # noqa: F401 — checked below
+
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.sentry_environment,
+            release=__version__,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+        logger.info("sentry_initialised", environment=settings.sentry_environment)
+    except ImportError:
+        logger.warning(
+            "sentry_sdk_not_installed",
+            detail="Install sentry-sdk to enable error tracking: pip install sentry-sdk",
+        )
+
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -39,6 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan management: startup and shutdown."""
     settings = get_settings()
 
+    _init_sentry()
     await init_db()
     await get_cache()
 
@@ -78,6 +103,14 @@ def create_app() -> FastAPI:
 
     # Rate limit exceeded → 429
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+    # Sentry ASGI middleware — only added when sentry_sdk is installed and DSN is set
+    if settings.sentry_dsn:
+        try:
+            from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+            app.add_middleware(SentryAsgiMiddleware)  # type: ignore[arg-type]
+        except ImportError:
+            pass  # sentry_sdk not installed; warning already emitted at startup
 
     # CORS middleware — origins controlled via ALLOWED_ORIGINS env var
     app.add_middleware(

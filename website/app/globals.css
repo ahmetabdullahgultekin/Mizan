@@ -1,18 +1,9 @@
-/* Google Fonts loaded at runtime (browser) — not at build time */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Amiri:wght@400;700&family=Cairo:wght@200..1000&display=swap');
+/* Fonts are loaded via next/font/google in layout.tsx (build-time, no render-blocking). */
+/* CSS variables --font-inter, --font-amiri, --font-cairo are injected by next/font.     */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* ============================================
-   Font Variables (set here since next/font/google is not used)
-   ============================================ */
-:root {
-  --font-inter: 'Inter', system-ui, sans-serif;
-  --font-amiri: 'Amiri', serif;
-  --font-cairo: 'Cairo', system-ui, sans-serif;
-}
 
 /* ============================================
    CSS Variables - Design Tokens

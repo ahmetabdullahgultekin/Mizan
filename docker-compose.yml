@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://mizan:mizan@db:5432/mizan
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-mizan}:${POSTGRES_PASSWORD:-mizan}@db:5432/${POSTGRES_DB:-mizan}
       - REDIS_URL=redis://redis:6379/0
       - LOG_LEVEL=INFO
     depends_on:
@@ -46,13 +46,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: mizan
-      POSTGRES_PASSWORD: mizan
-      POSTGRES_DB: mizan
+      POSTGRES_USER: ${POSTGRES_USER:-mizan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mizan}
+      POSTGRES_DB: ${POSTGRES_DB:-mizan}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mizan -d mizan"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mizan} -d ${POSTGRES_DB:-mizan}"]
       interval: 5s
       timeout: 5s
       retries: 5

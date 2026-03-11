@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
+import structlog
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,9 @@ from mizan.infrastructure.persistence.models import (
     TextSourceModel,
     VerseEmbeddingModel,
 )
+
+
+logger = structlog.get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +116,7 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         )
         self._session.add(model)
         await self._session.flush()
+        logger.info("library_space_created", space_id=str(space.id), name=space.name)
         return space
 
     async def get_by_id(self, space_id: UUID) -> LibrarySpace | None:
@@ -139,7 +144,9 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         result = await self._session.execute(
             delete(LibrarySpaceModel).where(LibrarySpaceModel.id == space_id)
         )
-        return result.rowcount > 0
+        found = result.rowcount > 0
+        logger.info("library_space_deleted", space_id=str(space_id), found=found)
+        return found
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +160,8 @@ class PostgresTextSourceRepository(ITextSourceRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, source: TextSource) -> TextSource:
+    async def create(self, source: TextSource) -> TextSource:  # type: ignore[override]
+        logger.info("text_source_creating", source_id=str(source.id), source_type=source.source_type.value)
         model = TextSourceModel(
             id=source.id,
             library_space_id=source.library_space_id,
@@ -171,6 +179,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         )
         self._session.add(model)
         await self._session.flush()
+        logger.info("text_source_created", source_id=str(source.id))
         return source
 
     async def get_by_id(self, source_id: UUID) -> TextSource | None:
@@ -412,6 +421,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         for ve in embeddings:
             await self.upsert(ve)
         await self._session.flush()
+        logger.debug("verse_embeddings_upserted", count=len(embeddings))
         return len(embeddings)
 
     async def get_by_verse(

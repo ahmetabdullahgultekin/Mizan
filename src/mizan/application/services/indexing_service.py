@@ -10,7 +10,7 @@ This improves retrieval quality significantly for Arabic and multilingual text.
 
 from __future__ import annotations
 
-import logging
+import structlog
 from uuid import UUID, uuid4
 from datetime import datetime
 
@@ -30,7 +30,7 @@ from mizan.infrastructure.chunking.chunking_strategies import (
     VerseChunker,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Prefix for e5-style models (improves retrieval quality)
 PASSAGE_PREFIX = "passage: "
@@ -130,10 +130,10 @@ class IndexingService:
                     indexed_chunks=indexed,
                 )
                 logger.info(
-                    "Indexed %d/%d chunks for source %s",
-                    indexed,
-                    len(domain_chunks),
-                    source_id,
+                    "indexed_chunks",
+                    indexed=indexed,
+                    total=len(domain_chunks),
+                    source_id=str(source_id),
                 )
 
             # 4. Mark as fully indexed
@@ -148,7 +148,7 @@ class IndexingService:
             return indexed
 
         except Exception:
-            logger.exception("Failed to index source %s", source_id)
+            logger.exception("indexing_failed", source_id=str(source_id))
             await self._sources.update_status(
                 source_id, status=IndexingStatus.FAILED
             )
@@ -221,11 +221,9 @@ class QuranEmbeddingIndexer:
                 ]
                 skipped = before_count - len(verses)
                 if skipped:
-                    logger.info(
-                        "Skipping %d already-embedded verses (checkpoint/resume)", skipped
-                    )
+                    logger.info("skipping_embedded_verses", skipped=skipped)
 
-        logger.info("Starting embedding for %d verses", len(verses))
+        logger.info("embedding_verses_start", verse_count=len(verses))
 
         embedded = 0
         for i in range(0, len(verses), self._batch_size):
@@ -248,6 +246,6 @@ class QuranEmbeddingIndexer:
 
             await self._verse_embs.upsert_batch(verse_embeddings)
             embedded += len(batch)
-            logger.info("Embedded %d/%d verses", embedded, len(verses))
+            logger.info("embedded_verses_progress", embedded=embedded, total=len(verses))
 
         return embedded
