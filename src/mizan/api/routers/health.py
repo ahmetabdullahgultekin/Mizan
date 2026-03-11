@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 
 from mizan import __version__
 from mizan.api.dependencies import Cache, DbSession
@@ -24,7 +25,7 @@ async def health_check(
     # Check database
     db_healthy = True
     try:
-        await session.execute("SELECT 1")
+        await session.execute(text("SELECT 1"))
     except Exception:
         db_healthy = False
 

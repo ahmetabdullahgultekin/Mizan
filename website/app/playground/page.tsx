@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, RotateCcw, History, Keyboard } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, RotateCcw, History, Keyboard, AlertCircle, GitBranch } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,13 @@ import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/pla
 import { Spotlight } from '@/components/animated/spotlight';
 import { GlowingOrbs } from '@/components/animated/floating-particles';
 import { getApiClient } from '@/lib/api/client';
-import type { LetterCountMethod, AbjadSystem, AnalysisResponse, VerseAnalysisResponse } from '@/types/api';
+import type {
+  LetterCountMethod,
+  AbjadSystem,
+  AnalysisResponse,
+  VerseAnalysisResponse,
+  SimilarVerseResponse,
+} from '@/types/api';
 
 /**
  * Playground Page
@@ -31,10 +37,15 @@ export default function PlaygroundPage() {
   const [abjadSystem, setAbjadSystem] = React.useState<AbjadSystem>('mashriqi');
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [result, setResult] = React.useState<AnalysisResponse | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [similarVerses, setSimilarVerses] = React.useState<SimilarVerseResponse[]>([]);
+  const [isFindingSimilar, setIsFindingSimilar] = React.useState(false);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResult(null);
+    setError(null);
+    setSimilarVerses([]);
 
     try {
       const client = getApiClient();
@@ -62,39 +73,56 @@ export default function PlaygroundPage() {
           metadata: { surah: selectedSurah, ayah: selectedAyah },
         });
       } else {
-        // Custom text: use the Abjad endpoint (accepts ?text=...) for value + breakdown;
-        // count letters/words client-side (no backend endpoint for arbitrary text yet).
-        const abjadRes = await client.calculateAbjad({
-          text: customText,
-          system: abjadSystem,
-          include_breakdown: true,
-        });
-
-        const arabicLetters = /[\u0621-\u063A\u0641-\u064A\u0671]/g;
-        const letterMatches = customText.replace(/[\u064B-\u065F\u0670]/g, '').match(arabicLetters);
-        const letterCount = letterMatches?.length ?? 0;
-        const wordCount = customText.trim().split(/\s+/).filter(Boolean).length;
+        // Custom text: use backend endpoints for accurate Arabic counting
+        const [letterRes, wordRes, abjadRes] = await Promise.all([
+          client.countLetters({ text: customText }),
+          client.countWords({ text: customText }),
+          client.calculateAbjad({
+            text: customText,
+            system: abjadSystem,
+            include_breakdown: true,
+          }),
+        ]);
 
         setResult({
           text: customText,
-          letter_count: letterCount,
-          word_count: wordCount,
+          letter_count: letterRes.count,
+          word_count: wordRes.count,
           abjad_value: abjadRes.value,
           letter_method: letterMethod,
           abjad_system: abjadSystem,
           breakdown: abjadRes.breakdown,
         });
       }
-    } catch {
-      // API unreachable — show a user-friendly error via result placeholder
-      setResult(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Analysis failed. Make sure the backend is running.'
+      );
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  const handleFindSimilar = async () => {
+    if (!selectedSurah || !selectedAyah) return;
+    setIsFindingSimilar(true);
+    setSimilarVerses([]);
+    try {
+      const verses = await getApiClient().findSimilarVerses(selectedSurah, selectedAyah, 5);
+      setSimilarVerses(verses);
+    } catch {
+      // Similar verses require embeddings — silently skip if unavailable
+    } finally {
+      setIsFindingSimilar(false);
+    }
+  };
+
   const handleReset = () => {
     setResult(null);
+    setError(null);
+    setSimilarVerses([]);
     setCustomText('');
     setSelectedSurah(null);
     setSelectedAyah(null);
@@ -227,8 +255,80 @@ export default function PlaygroundPage() {
                 </Button>
               </div>
 
+              {/* Error state */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4"
+                  >
+                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-destructive text-sm">Analysis Failed</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Results */}
               <AnalysisResults result={result} isLoading={isAnalyzing} />
+
+              {/* Find Similar Verses (verse mode only, after analysis) */}
+              {inputMode === 'verse' && result && selectedSurah && selectedAyah && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-6 border-t pt-6"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <GitBranch className="h-4 w-4 text-gold-500" />
+                      Similar Verses
+                    </h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFindSimilar}
+                      disabled={isFindingSimilar}
+                    >
+                      {isFindingSimilar ? 'Searching…' : 'Find Similar'}
+                    </Button>
+                  </div>
+
+                  <AnimatePresence>
+                    {similarVerses.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-2"
+                      >
+                        {similarVerses.map((v) => (
+                          <button
+                            key={`${v.surah_number}:${v.verse_number}`}
+                            onClick={() => {
+                              setSelectedSurah(v.surah_number);
+                              setSelectedAyah(v.verse_number);
+                              setSimilarVerses([]);
+                              setResult(null);
+                            }}
+                            className="w-full flex items-center justify-between rounded-lg border p-3 text-left hover:border-gold-500/40 transition-colors"
+                          >
+                            <span className="text-sm font-mono">
+                              {v.surah_number}:{v.verse_number}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(v.similarity_score * 100)}% similar
+                            </span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
             </motion.div>
           </Spotlight>
 

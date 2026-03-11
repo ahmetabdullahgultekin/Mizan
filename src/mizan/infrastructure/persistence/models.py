@@ -81,9 +81,10 @@ class SurahModel(Base):
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    # Relationships
+    # Relationships — lazy="raise" prevents accidental N+1 queries.
+    # Use explicit options(selectinload(...)) in queries that need verses.
     verses: Mapped[list["VerseModel"]] = relationship(
-        "VerseModel", back_populates="surah", lazy="selectin"
+        "VerseModel", back_populates="surah", lazy="raise"
     )
 
     # Indexes

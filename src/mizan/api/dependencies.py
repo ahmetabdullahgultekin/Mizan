@@ -6,11 +6,13 @@ Provides repository and service instances to endpoints.
 
 from typing import Annotated, AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mizan.application.services.analyzer_service import AnalyzerService
 from mizan.infrastructure.cache.redis_cache import RedisCache, get_cache
+from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.persistence.database import get_async_session
 from mizan.infrastructure.persistence.repositories import (
     PostgresMorphologyRepository,
@@ -57,6 +59,27 @@ async def get_analyzer_service(
 ) -> AnalyzerService:
     """Get analyzer service dependency."""
     return AnalyzerService(quran_repo, cache)
+
+
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def verify_api_key(key: str | None = Security(_api_key_header)) -> None:
+    """
+    Verify X-API-Key header for mutating library endpoints.
+
+    If API_KEY is empty in settings, auth is disabled (local dev).
+    Otherwise the header must match exactly.
+    """
+    settings = get_settings()
+    if not settings.api_key:
+        # Auth disabled — local development mode
+        return
+    if key != settings.api_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing API key. Provide a valid X-API-Key header.",
+        )
 
 
 # Type aliases for cleaner endpoint signatures

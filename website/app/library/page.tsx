@@ -14,6 +14,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -89,7 +90,7 @@ function AddSourceForm({
         author: author || undefined,
         content: content.trim(),
       });
-      // Trigger indexing immediately
+      // Trigger indexing immediately (best-effort)
       try { await getApiClient().indexTextSource(src.id); } catch { /* best-effort */ }
       onAdded(src);
     } catch {
@@ -188,6 +189,32 @@ function LibrarySpaceCard({ space, onDeleted }: {
   const [sources, setSources] = React.useState<TextSourceResponse[]>(space.sources ?? []);
   const [expanded, setExpanded] = React.useState(true);
   const [showAddForm, setShowAddForm] = React.useState(false);
+  const [sourceError, setSourceError] = React.useState<string | null>(null);
+  const [isDeletingSpace, setIsDeletingSpace] = React.useState(false);
+
+  // Poll indexing status for any PENDING or INDEXING sources every 3 seconds
+  React.useEffect(() => {
+    const active = sources.filter((s) => s.status === 'INDEXING' || s.status === 'PENDING');
+    if (active.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const refreshed = await Promise.all(
+        active.map((s) =>
+          getApiClient()
+            .getTextSource(s.id)
+            .catch(() => s)
+        )
+      );
+      setSources((prev) =>
+        prev.map((src) => {
+          const updated = refreshed.find((r) => r.id === src.id);
+          return updated ?? src;
+        })
+      );
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [sources]);
 
   const handleAddSource = (src: TextSourceResponse) => {
     setSources((prev) => [src, ...prev]);
@@ -195,48 +222,80 @@ function LibrarySpaceCard({ space, onDeleted }: {
   };
 
   const handleDeleteSource = async (srcId: string) => {
+    setSourceError(null);
     try {
       await getApiClient().deleteTextSource(srcId);
       setSources((prev) => prev.filter((s) => s.id !== srcId));
-    } catch { /* ignore */ }
+    } catch {
+      setSourceError('Failed to delete source. Please try again.');
+    }
   };
 
   const handleReindex = async (srcId: string) => {
+    setSourceError(null);
     try {
       await getApiClient().indexTextSource(srcId);
       setSources((prev) => prev.map((s) => s.id === srcId ? { ...s, status: 'INDEXING' } : s));
-    } catch { /* ignore */ }
+    } catch {
+      setSourceError('Failed to start re-indexing. Please try again.');
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (!window.confirm(`Delete library "${space.name}" and all its sources? This cannot be undone.`)) {
+      return;
+    }
+    setIsDeletingSpace(true);
+    try {
+      await getApiClient().deleteLibrarySpace(space.id);
+      onDeleted(space.id);
+    } catch {
+      setSourceError('Failed to delete library. Please try again.');
+      setIsDeletingSpace(false);
+    }
   };
 
   return (
     <div className="rounded-xl border bg-card">
       {/* Header */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between p-5 text-left"
-      >
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-gold-500/10 p-2">
+      <div className="flex items-center gap-2 p-5">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-3 text-left flex-1 min-w-0"
+        >
+          <div className="rounded-lg bg-gold-500/10 p-2 shrink-0">
             <Library className="h-5 w-5 text-gold-500" />
           </div>
-          <div>
-            <h3 className="font-semibold">{space.name}</h3>
+          <div className="min-w-0">
+            <h3 className="font-semibold truncate">{space.name}</h3>
             {space.description && (
-              <p className="text-sm text-muted-foreground">{space.description}</p>
+              <p className="text-sm text-muted-foreground truncate">{space.description}</p>
             )}
           </div>
-        </div>
-        <div className="flex items-center gap-3">
+        </button>
+        <div className="flex items-center gap-2 shrink-0">
           <Badge variant="outline" className="text-xs">
             {sources.length} source{sources.length !== 1 ? 's' : ''}
           </Badge>
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            onClick={handleDeleteSpace}
+            disabled={isDeletingSpace}
+            title="Delete this library"
+          >
+            {isDeletingSpace
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Trash2 className="h-4 w-4" />}
+          </Button>
+          <button onClick={() => setExpanded((v) => !v)}>
+            {expanded
+              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          </button>
         </div>
-      </button>
+      </div>
 
       {/* Sources */}
       <AnimatePresence>
@@ -248,6 +307,15 @@ function LibrarySpaceCard({ space, onDeleted }: {
             className="overflow-hidden"
           >
             <div className="border-t px-5 pb-5 space-y-3">
+              {/* Error banner */}
+              {sourceError && (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{sourceError}</span>
+                  <button className="ml-auto underline" onClick={() => setSourceError(null)}>Dismiss</button>
+                </div>
+              )}
+
               {sources.length === 0 && !showAddForm && (
                 <div className="py-8 text-center text-sm text-muted-foreground">
                   <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -279,7 +347,7 @@ function LibrarySpaceCard({ space, onDeleted }: {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {src.status === 'FAILED' && (
+                    {(src.status === 'FAILED' || src.status === 'INDEXED') && (
                       <Button
                         variant="ghost"
                         size="sm"

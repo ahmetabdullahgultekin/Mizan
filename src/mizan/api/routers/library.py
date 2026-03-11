@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from mizan.api.dependencies import DbSession
+from mizan.api.dependencies import DbSession, verify_api_key
 from mizan.application.dtos.library_requests import (
     AddTextSourceRequest,
     CreateLibrarySpaceRequest,
@@ -64,6 +64,7 @@ def _get_indexing_service(session: DbSession) -> IndexingService:
 async def create_library_space(
     body: CreateLibrarySpaceRequest,
     session: DbSession,
+    _: None = Depends(verify_api_key),
 ) -> LibrarySpaceResponse:
     """
     Create a named collection to organize Islamic text sources.
@@ -124,7 +125,7 @@ async def get_library_space(space_id: UUID, session: DbSession) -> LibrarySpaceR
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a library space",
 )
-async def delete_library_space(space_id: UUID, session: DbSession) -> None:
+async def delete_library_space(space_id: UUID, session: DbSession, _: None = Depends(verify_api_key)) -> None:
     """Delete a library space and all its sources and chunks."""
     svc = _get_library_service(session)
     found = await svc.delete_space(space_id)
@@ -169,6 +170,7 @@ async def add_text_source(
     body: AddTextSourceRequest,
     background_tasks: BackgroundTasks,
     session: DbSession,
+    _: None = Depends(verify_api_key),
 ) -> TextSourceResponse:
     """
     Add an Islamic text source to a library and trigger background indexing.
@@ -240,7 +242,7 @@ async def list_text_sources(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a text source",
 )
-async def delete_text_source(source_id: UUID, session: DbSession) -> None:
+async def delete_text_source(source_id: UUID, session: DbSession, _: None = Depends(verify_api_key)) -> None:
     """Delete a text source and all its chunks and embeddings."""
     lib_svc = _get_library_service(session)
     found = await lib_svc.delete_source(source_id)

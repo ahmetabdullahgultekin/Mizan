@@ -7,7 +7,7 @@ import { Search, Filter, BookOpen, Layers, Loader2, AlertCircle } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getApiClient } from '@/lib/api/client';
-import type { SemanticSearchResponse, SourceType } from '@/types/api';
+import type { SemanticSearchResultResponse, SourceType } from '@/types/api';
 
 // ---------------------------------------------------------------------------
 // Source type filter options
@@ -28,7 +28,7 @@ function SearchResultCard({
   result,
   index,
 }: {
-  result: SemanticSearchResponse;
+  result: SemanticSearchResultResponse;
   index: number;
 }) {
   const scorePercent = Math.round(result.similarity_score * 100);
@@ -49,18 +49,13 @@ function SearchResultCard({
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-xs capitalize">
-              {result.source.source_type}
+              {result.source_type}
             </Badge>
             {result.reference && (
               <span className="text-xs text-muted-foreground font-mono">{result.reference}</span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            {result.source.title}
-            {result.source.author && (
-              <span className="ml-1 opacity-70">— {result.source.author}</span>
-            )}
-          </p>
+          <p className="text-sm text-muted-foreground">{result.source_title}</p>
         </div>
 
         {/* Similarity score */}
@@ -78,7 +73,7 @@ function SearchResultCard({
         className="text-base leading-relaxed font-arabic"
         style={{ fontFamily: 'var(--font-amiri), serif' }}
       >
-        {result.chunk_content}
+        {result.content}
       </p>
     </motion.div>
   );
@@ -92,10 +87,11 @@ export default function SearchPage() {
   const [query, setQuery] = React.useState('');
   const [selectedTypes, setSelectedTypes] = React.useState<Set<SourceType>>(new Set());
   const [minSimilarity, setMinSimilarity] = React.useState(0.65);
-  const [results, setResults] = React.useState<SemanticSearchResponse[]>([]);
+  const [results, setResults] = React.useState<SemanticSearchResultResponse[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [hasSearched, setHasSearched] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -160,7 +156,14 @@ export default function SearchPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuery(val);
+                  if (debounceRef.current) clearTimeout(debounceRef.current);
+                  if (val.trim()) {
+                    debounceRef.current = setTimeout(() => handleSearch(), 300);
+                  }
+                }}
                 placeholder="Search by meaning… e.g. 'mercy and forgiveness' or 'الرحمة والمغفرة'"
                 dir="auto"
                 className="w-full rounded-xl border bg-background pl-12 pr-4 py-3.5 text-base
@@ -285,7 +288,7 @@ export default function SearchPage() {
               ) : (
                 <div className="space-y-4">
                   {results.map((r, i) => (
-                    <SearchResultCard key={i} result={r} index={i} />
+                    <SearchResultCard key={r.chunk_id} result={r} index={i} />
                   ))}
                 </div>
               )}

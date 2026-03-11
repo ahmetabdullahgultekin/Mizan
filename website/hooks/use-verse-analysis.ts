@@ -36,7 +36,43 @@ export function useVerseAnalysis(options?: UseVerseAnalysisOptions) {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        const result = await client.analyze(request);
+        let result: AnalysisResponse;
+
+        if (request.surah != null && request.ayah != null) {
+          // Verse mode — use analyzeVerse and map to AnalysisResponse shape
+          const verseResult = await client.analyzeVerse(request.surah, request.ayah);
+          result = {
+            text: '',
+            letter_count: verseResult.letters.count,
+            word_count: verseResult.words.count,
+            abjad_value: verseResult.abjad.value,
+            letter_method: (request.letter_method ?? 'traditional') as AnalysisResponse['letter_method'],
+            abjad_system: (request.abjad_system ?? 'mashriqi') as AnalysisResponse['abjad_system'],
+            metadata: { surah: request.surah, ayah: request.ayah },
+          };
+        } else if (request.text) {
+          // Text mode — use individual analysis endpoints
+          const [letters, words, abjad] = await Promise.all([
+            client.countLetters({ text: request.text }),
+            client.countWords({ text: request.text }),
+            client.calculateAbjad({
+              text: request.text,
+              system: request.abjad_system,
+              include_breakdown: request.include_breakdown,
+            }),
+          ]);
+          result = {
+            text: request.text,
+            letter_count: letters.count,
+            word_count: words.count,
+            abjad_value: abjad.value,
+            letter_method: request.letter_method ?? 'traditional',
+            abjad_system: request.abjad_system ?? 'mashriqi',
+          };
+        } else {
+          throw new Error('AnalysisRequest must include either text or surah+ayah');
+        }
+
         setState({ result, isLoading: false, error: null });
         options?.onSuccess?.(result);
         return result;
@@ -111,7 +147,7 @@ export function useSurahList() {
       setIsLoading(true);
       try {
         const response = await client.getSurahList();
-        setSurahs(response.surahs);
+        setSurahs(response);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Failed to fetch surahs'));
       } finally {

@@ -64,6 +64,17 @@ class Settings(BaseSettings):
         min_length=16,
         description="Secret key for signing",
     )
+    allowed_origins: list[str] = Field(
+        default=["http://localhost:3000"],
+        description="Allowed CORS origins. Set to ['*'] only for local dev.",
+    )
+    api_key: str = Field(
+        default="",
+        description=(
+            "API key required for library mutation endpoints (X-API-Key header). "
+            "Empty string disables auth — only for local dev."
+        ),
+    )
 
     # ==========================================================================
     # Data Sources

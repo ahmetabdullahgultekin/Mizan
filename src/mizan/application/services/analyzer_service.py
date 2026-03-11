@@ -51,6 +51,7 @@ class AnalyzerService:
         script_type: ScriptType = ScriptType.UTHMANI,
         count_alif_wasla: bool = True,
         count_alif_khanjariyya: bool = True,
+        text: str | None = None,
     ) -> dict[str, Any]:
         """
         Count letters in specified scope.
@@ -61,21 +62,21 @@ class AnalyzerService:
             script_type: Script to analyze
             count_alif_wasla: Include Alif Wasla
             count_alif_khanjariyya: Include Alif Khanjariyya
+            text: Arbitrary text to count (skips DB lookup when provided)
 
         Returns:
             Dictionary with count and methodology
         """
-        # Check cache
+        _use_cache = text is None
         cache_key = f"letters:{surah_number}:{verse_number}:{script_type.value}"
-        if self._cache:
+        if _use_cache and self._cache:
             cached = await self._cache.get("analysis", cache_key)
             if cached:
                 return cached
 
-        # Get text
-        text = await self._get_text(surah_number, verse_number, script_type)
+        if text is None:
+            text = await self._get_text(surah_number, verse_number, script_type)
 
-        # Count
         count = self._letter_counter.count_letters(
             text,
             count_alif_wasla=count_alif_wasla,
@@ -95,8 +96,7 @@ class AnalyzerService:
             ),
         }
 
-        # Cache result
-        if self._cache:
+        if _use_cache and self._cache:
             await self._cache.set("analysis", cache_key, result)
 
         return result
@@ -106,19 +106,26 @@ class AnalyzerService:
         surah_number: int | None = None,
         verse_number: int | None = None,
         script_type: ScriptType = ScriptType.UTHMANI,
+        text: str | None = None,
     ) -> dict[str, Any]:
         """
         Count words in specified scope.
 
+        Args:
+            text: Arbitrary text to count (skips DB lookup when provided)
+
         Returns dictionary with count, methodology, and audit trail.
         """
+        _use_cache = text is None
         cache_key = f"words:{surah_number}:{verse_number}:{script_type.value}"
-        if self._cache:
+        if _use_cache and self._cache:
             cached = await self._cache.get("analysis", cache_key)
             if cached:
                 return cached
 
-        text = await self._get_text(surah_number, verse_number, script_type)
+        if text is None:
+            text = await self._get_text(surah_number, verse_number, script_type)
+
         word_result = self._word_counter.count_words(text)
 
         result = {
@@ -132,7 +139,7 @@ class AnalyzerService:
             "audit": word_result.to_audit_dict(),
         }
 
-        if self._cache:
+        if _use_cache and self._cache:
             await self._cache.set("analysis", cache_key, result)
 
         return result
@@ -163,17 +170,17 @@ class AnalyzerService:
 
         abjad_value = self._abjad_calculator.calculate(text, system)
 
-        result = {
+        result: dict[str, Any] = {
             "value": abjad_value.value,
             "system": system.value,
-            "text_length": len(text),
+            "text_analyzed": text[:50] + "…" if len(text) > 50 else text,
             "is_prime": abjad_value.is_prime(),
             "digital_root": abjad_value.digital_root(),
         }
 
         if include_breakdown:
             result["breakdown"] = [
-                {"letter": letter, "value": value}
+                {"letter": letter, "abjad_value": value}
                 for letter, value in abjad_value.letter_breakdown
             ]
 
@@ -196,12 +203,22 @@ class AnalyzerService:
 
         # Sort by frequency (descending)
         sorted_freq = sorted(frequency.items(), key=lambda x: x[1], reverse=True)
+        total = sum(frequency.values())
+
+        top_items = [
+            {
+                "letter": letter,
+                "count": count,
+                "percentage": round(count / total * 100, 2) if total > 0 else 0.0,
+            }
+            for letter, count in sorted_freq[:10]
+        ]
 
         return {
-            "frequency": dict(sorted_freq),
-            "total_letters": sum(frequency.values()),
-            "unique_letters": len(frequency),
-            "top_10": sorted_freq[:10],
+            "distribution": dict(sorted_freq),
+            "total_items": total,
+            "unique_items": len(frequency),
+            "top_items": top_items,
             "scope": {
                 "surah": surah_number,
                 "verse": verse_number,
