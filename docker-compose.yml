@@ -75,16 +75,6 @@ services:
     networks:
       - mizan-network
 
-  adminer:
-    image: adminer
-    container_name: mizan-adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-    networks:
-      - mizan-network
-
 volumes:
   postgres-data:
   redis-data:

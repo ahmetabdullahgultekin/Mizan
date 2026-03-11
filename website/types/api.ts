@@ -195,17 +195,31 @@ export interface SemanticSearchRequest {
   min_similarity?: number;
 }
 
-export interface SemanticSearchResponse {
-  chunk_content: string;
+/** A single result item from semantic search (matches backend SemanticSearchResultResponse). */
+export interface SemanticSearchResultResponse {
+  chunk_id: string;
+  text_source_id: string;
+  source_title: string;
+  source_type: SourceType;
   reference: string;
+  content: string;
   similarity_score: number;
-  source: {
-    id: string;
-    title: string;
-    source_type: SourceType;
-    author?: string;
-  };
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+/** The full response wrapper from POST /api/v1/search/semantic. */
+export interface SemanticSearchResponse {
+  query: string;
+  results: SemanticSearchResultResponse[];
+  total_results: number;
+  embedding_model: string;
+}
+
+/** A similar verse result from GET /api/v1/search/verses/{surah}/{verse}/similar. */
+export interface SimilarVerseResponse {
+  surah_number: number;
+  verse_number: number;
+  similarity_score: number;
 }
 
 // ==========================================

@@ -1,14 +1,23 @@
 """Analysis endpoints for counting, Abjad, and frequency operations."""
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from mizan.api.dependencies import Analyzer
 from mizan.application.dtos.requests import AbjadRequest, SearchRequest
 from mizan.application.dtos.responses import (
+    AbjadBreakdownItem,
     AbjadResponse,
     CountResponse,
+    FrequencyItemResponse,
     FrequencyResponse,
     SearchResponse,
+    VerseAbjadResponse,
+    VerseAnalysisResponse,
+    VerseFrequencyResponse,
+    VerseLettersResponse,
+    VerseWordsResponse,
 )
 from mizan.domain.enums import AbjadSystem, NormalizationLevel, ScriptType
 from mizan.domain.exceptions import DomainException
@@ -24,11 +33,13 @@ async def count_letters(
     script: ScriptType = Query(ScriptType.UTHMANI, description="Script type"),
     count_alif_wasla: bool = Query(True, description="Count Alif Wasla"),
     count_alif_khanjariyya: bool = Query(True, description="Count Alif Khanjariyya"),
+    text: str | None = Query(None, max_length=10000, description="Arbitrary text to count"),
 ) -> CountResponse:
     """
     Count Arabic letters in specified scope.
 
     Scope can be:
+    - Arbitrary text (text parameter)
     - Entire Quran (no parameters)
     - Single surah (surah only)
     - Single verse (surah and verse)
@@ -40,6 +51,7 @@ async def count_letters(
             script_type=script,
             count_alif_wasla=count_alif_wasla,
             count_alif_khanjariyya=count_alif_khanjariyya,
+            text=text,
         )
         return CountResponse(
             count_type="letters",
@@ -57,6 +69,7 @@ async def count_words(
     surah: int | None = Query(None, ge=1, le=114),
     verse: int | None = Query(None, ge=1),
     script: ScriptType = Query(ScriptType.UTHMANI),
+    text: str | None = Query(None, max_length=10000, description="Arbitrary text to count"),
 ) -> CountResponse:
     """
     Count words in specified scope.
@@ -68,6 +81,7 @@ async def count_words(
             surah_number=surah,
             verse_number=verse,
             script_type=script,
+            text=text,
         )
         return CountResponse(
             count_type="words",
@@ -105,7 +119,7 @@ async def calculate_abjad(
         return AbjadResponse(
             value=result["value"],
             system=system,
-            text_analyzed=text or f"Surah {surah}" + (f":{verse}" if verse else ""),
+            text_analyzed=result.get("text_analyzed", text or f"Surah {surah}" + (f":{verse}" if verse else "")),
             breakdown=result.get("breakdown"),
             is_prime=result["is_prime"],
             digital_root=result["digital_root"],
@@ -134,25 +148,26 @@ async def get_letter_frequency(
             script_type=script,
             normalize_variants=normalize_variants,
         )
+        top_items = [FrequencyItemResponse(**item) for item in result["top_items"]]
         return FrequencyResponse(
             frequency_type="letters",
-            total_items=result["total_letters"],
-            unique_items=result["unique_letters"],
-            distribution=result["frequency"],
-            top_items=result["top_10"],
+            total_items=result["total_items"],
+            unique_items=result["unique_items"],
+            distribution=result["distribution"],
+            top_items=top_items,
         )
     except DomainException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/search")
+@router.get("/search", response_model=SearchResponse)
 async def search_quran(
     analyzer: Analyzer,
     q: str = Query(..., min_length=1, max_length=500, description="Search query"),
     surah: int | None = Query(None, ge=1, le=114),
     normalization: NormalizationLevel = Query(NormalizationLevel.FULL),
     limit: int = Query(100, ge=1, le=1000),
-) -> dict:
+) -> SearchResponse:
     """
     Search for text in the Quran.
 
@@ -165,39 +180,78 @@ async def search_quran(
             normalization=normalization,
             limit=limit,
         )
-        return result
+        return SearchResponse(
+            query=result["query"],
+            total_results=result["total_results"],
+            results=result["results"],
+            methodology=result["methodology"],
+        )
     except DomainException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/analysis/verse/{surah}/{verse}")
+@router.get("/analysis/verse/{surah}/{verse}", response_model=VerseAnalysisResponse)
 async def analyze_verse(
     analyzer: Analyzer,
     surah: int = Path(..., ge=1, le=114),
     verse: int = Path(..., ge=1),
-) -> dict:
+) -> VerseAnalysisResponse:
     """
     Get complete analysis for a single verse.
 
     Returns letter count, word count, Abjad value, and frequency.
+    All sub-analyses run in parallel for optimal performance.
     """
     try:
-        # Get all analyses in parallel
-        letter_result = await analyzer.count_letters(surah, verse)
-        word_result = await analyzer.count_words(surah, verse)
-        abjad_result = await analyzer.calculate_abjad(
-            surah_number=surah,
-            verse_number=verse,
-            include_breakdown=True,
+        letter_result, word_result, abjad_result, frequency_result = await asyncio.gather(
+            analyzer.count_letters(surah_number=surah, verse_number=verse),
+            analyzer.count_words(surah_number=surah, verse_number=verse),
+            analyzer.calculate_abjad(
+                surah_number=surah,
+                verse_number=verse,
+                include_breakdown=True,
+            ),
+            analyzer.get_letter_frequency(surah_number=surah, verse_number=verse),
         )
-        frequency_result = await analyzer.get_letter_frequency(surah, verse)
 
-        return {
-            "location": f"{surah}:{verse}",
-            "letters": letter_result,
-            "words": word_result,
-            "abjad": abjad_result,
-            "letter_frequency": frequency_result,
-        }
+        abjad_breakdown = None
+        if abjad_result.get("breakdown"):
+            abjad_breakdown = [
+                AbjadBreakdownItem(
+                    letter=item["letter"],
+                    abjad_value=item["abjad_value"],
+                )
+                for item in abjad_result["breakdown"]
+            ]
+
+        top_items = [FrequencyItemResponse(**item) for item in frequency_result["top_items"]]
+
+        return VerseAnalysisResponse(
+            location=f"{surah}:{verse}",
+            letters=VerseLettersResponse(
+                count=letter_result["count"],
+                scope=letter_result["scope"],
+                methodology=letter_result["methodology"],
+            ),
+            words=VerseWordsResponse(
+                count=word_result["count"],
+                scope=word_result["scope"],
+                methodology=word_result["methodology"],
+            ),
+            abjad=VerseAbjadResponse(
+                value=abjad_result["value"],
+                system=abjad_result["system"],
+                text_analyzed=abjad_result.get("text_analyzed", f"{surah}:{verse}"),
+                is_prime=abjad_result["is_prime"],
+                digital_root=abjad_result["digital_root"],
+                breakdown=abjad_breakdown,
+            ),
+            letter_frequency=VerseFrequencyResponse(
+                total_items=frequency_result["total_items"],
+                unique_items=frequency_result["unique_items"],
+                distribution=frequency_result["distribution"],
+                top_items=top_items,
+            ),
+        )
     except DomainException as e:
         raise HTTPException(status_code=400, detail=str(e))

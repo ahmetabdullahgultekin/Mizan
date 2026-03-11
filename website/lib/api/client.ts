@@ -19,7 +19,8 @@ import type {
   TextSourceResponse,
   AddTextSourceRequest,
   SemanticSearchRequest,
-  SemanticSearchResponse,
+  SemanticSearchResultResponse,
+  SimilarVerseResponse,
 } from '@/types/api';
 
 export class ApiClient {
@@ -99,7 +100,7 @@ export class ApiClient {
    * Check API health status
    */
   async getHealth(): Promise<HealthResponse> {
-    return this.get<HealthResponse>('/api/v1/health');
+    return this.get<HealthResponse>('/health');
   }
 
   // ==========================================
@@ -117,7 +118,7 @@ export class ApiClient {
    * Get all verses of a surah
    */
   async getSurahVerses(surah: number): Promise<VerseResponse[]> {
-    return this.get<VerseResponse[]>(`/api/v1/verses/${surah}`);
+    return this.get<VerseResponse[]>(`/api/v1/surahs/${surah}/verses`);
   }
 
   // ==========================================
@@ -160,8 +161,13 @@ export class ApiClient {
     verse?: number;
     script?: string;
     count_alif_wasla?: boolean;
-  } = {}): Promise<{ count: number; scope: string; methodology: string }> {
-    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    text?: string;
+  } = {}): Promise<{ count: number; scope: Record<string, unknown>; methodology: string }> {
+    const qs = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      )
+    ).toString();
     return this.get(`/api/v1/analysis/letters/count${qs ? `?${qs}` : ''}`);
   }
 
@@ -169,11 +175,15 @@ export class ApiClient {
    * Count words in scope.
    * Endpoint: GET /api/v1/analysis/words/count
    */
-  async countWords(params: { surah?: number; verse?: number } = {}): Promise<{
+  async countWords(params: { surah?: number; verse?: number; text?: string } = {}): Promise<{
     count: number;
-    scope: string;
+    scope: Record<string, unknown>;
   }> {
-    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    const qs = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+      )
+    ).toString();
     return this.get(`/api/v1/analysis/words/count${qs ? `?${qs}` : ''}`);
   }
 
@@ -242,6 +252,13 @@ export class ApiClient {
   }
 
   /**
+   * Delete a library space and all its sources.
+   */
+  async deleteLibrarySpace(spaceId: string): Promise<void> {
+    return this.delete(`/api/v1/library/spaces/${spaceId}`);
+  }
+
+  /**
    * Delete a text source and all its chunks.
    */
   async deleteTextSource(sourceId: string): Promise<void> {
@@ -254,17 +271,22 @@ export class ApiClient {
 
   /**
    * Perform semantic search across indexed text sources.
+   * Returns the results array extracted from the backend wrapper response.
    */
-  async semanticSearch(request: SemanticSearchRequest): Promise<SemanticSearchResponse[]> {
-    return this.post<SemanticSearchResponse[]>('/api/v1/search/semantic', request);
+  async semanticSearch(request: SemanticSearchRequest): Promise<SemanticSearchResultResponse[]> {
+    const wrapper = await this.post<{ results: SemanticSearchResultResponse[] }>(
+      '/api/v1/search/semantic',
+      request
+    );
+    return wrapper.results;
   }
 
   /**
    * Find semantically similar verses.
    */
-  async findSimilarVerses(surah: number, verse: number, limit = 5): Promise<SemanticSearchResponse[]> {
-    return this.get<SemanticSearchResponse[]>(
-      `/api/v1/verses/${surah}/${verse}/similar?limit=${limit}`
+  async findSimilarVerses(surah: number, verse: number, limit = 5): Promise<SimilarVerseResponse[]> {
+    return this.get<SimilarVerseResponse[]>(
+      `/api/v1/search/verses/${surah}/${verse}/similar?limit=${limit}`
     );
   }
 }

@@ -80,6 +80,7 @@ class SearchResultItem(BaseModel):
     surah_number: int
     verse_number: int
     text: str
+    surah_name: str | None = None
     match_positions: list[tuple[int, int]] = Field(
         default_factory=list,
         description="Start/end positions of matches",
@@ -131,6 +132,14 @@ class AbjadResponse(BaseModel):
     digital_root: int
 
 
+class FrequencyItemResponse(BaseModel):
+    """Single frequency item in distribution."""
+
+    letter: str
+    count: int
+    percentage: float = 0.0
+
+
 class FrequencyResponse(BaseModel):
     """Frequency distribution response."""
 
@@ -138,7 +147,60 @@ class FrequencyResponse(BaseModel):
     total_items: int
     unique_items: int
     distribution: dict[str, int]
-    top_items: list[tuple[str, int]]
+    top_items: list[FrequencyItemResponse]
+
+
+class AbjadBreakdownItem(BaseModel):
+    """Single letter entry in Abjad breakdown."""
+
+    letter: str
+    abjad_value: int
+
+
+class VerseLettersResponse(BaseModel):
+    """Letters sub-response inside VerseAnalysisResponse."""
+
+    count: int
+    scope: dict[str, Any]
+    methodology: str
+
+
+class VerseWordsResponse(BaseModel):
+    """Words sub-response inside VerseAnalysisResponse."""
+
+    count: int
+    scope: dict[str, Any]
+    methodology: str
+
+
+class VerseAbjadResponse(BaseModel):
+    """Abjad sub-response inside VerseAnalysisResponse."""
+
+    value: int
+    system: str
+    text_analyzed: str
+    is_prime: bool
+    digital_root: int
+    breakdown: list[AbjadBreakdownItem] | None = None
+
+
+class VerseFrequencyResponse(BaseModel):
+    """Frequency sub-response inside VerseAnalysisResponse."""
+
+    total_items: int
+    unique_items: int
+    distribution: dict[str, int]
+    top_items: list[FrequencyItemResponse]
+
+
+class VerseAnalysisResponse(BaseModel):
+    """Complete verse analysis response from /api/v1/analysis/verse/{surah}/{verse}."""
+
+    location: str
+    letters: VerseLettersResponse
+    words: VerseWordsResponse
+    abjad: VerseAbjadResponse
+    letter_frequency: VerseFrequencyResponse
 
 
 class IntegrityResponse(BaseModel):

@@ -93,4 +93,3 @@ jobs:
         run: |
           pip install -e .
           safety check
-        continue-on-error: true
