@@ -2,6 +2,7 @@
 
 import asyncio
 
+import structlog
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from mizan.api.dependencies import Analyzer
@@ -23,6 +24,7 @@ from mizan.domain.enums import AbjadSystem, NormalizationLevel, ScriptType
 from mizan.domain.exceptions import DomainException
 
 router = APIRouter()
+logger = structlog.get_logger(__name__)
 
 
 @router.get("/analysis/letters/count", response_model=CountResponse)

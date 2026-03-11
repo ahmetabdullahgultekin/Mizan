@@ -112,8 +112,13 @@ export default function PlaygroundPage() {
     try {
       const verses = await getApiClient().findSimilarVerses(selectedSurah, selectedAyah, 5);
       setSimilarVerses(verses);
-    } catch {
-      // Similar verses require embeddings — silently skip if unavailable
+    } catch (err) {
+      // Similar verses require pre-computed embeddings — show actionable hint
+      setError(
+        err instanceof Error && err.message.includes('404')
+          ? 'No verse embeddings found. Run scripts/embed_quran.py to enable similarity search.'
+          : 'Similarity search unavailable. Embeddings may not be indexed yet.'
+      );
     } finally {
       setIsFindingSimilar(false);
     }

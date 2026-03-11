@@ -187,20 +187,43 @@ class QuranEmbeddingIndexer:
     async def embed_all_verses(
         self,
         surah_number: int | None = None,
+        skip_existing: bool = False,
     ) -> int:
         """
         Generate and store embeddings for all Quran verses (or one surah).
 
         Args:
             surah_number: If provided, only embed verses of this surah
+            skip_existing: If True, skip verses that already have embeddings
+                           (enables checkpoint/resume for interrupted runs)
 
         Returns:
-            Number of verses embedded
+            Number of verses newly embedded
         """
         # Stream verses for memory efficiency (6236 verses total)
         verses = []
         async for verse in self._quran.stream_verses(surah_number=surah_number):
             verses.append(verse)
+
+        # Checkpoint/resume: filter out already-embedded verses
+        if skip_existing:
+            from mizan.infrastructure.persistence.library_repositories import (
+                PostgresVerseEmbeddingRepository,
+            )
+            if isinstance(self._verse_embs, PostgresVerseEmbeddingRepository):
+                existing_keys = await self._verse_embs.get_embedded_verse_keys(
+                    model_name=self._embedder.model_name
+                )
+                before_count = len(verses)
+                verses = [
+                    v for v in verses
+                    if (v.location.surah_number, v.location.verse_number) not in existing_keys
+                ]
+                skipped = before_count - len(verses)
+                if skipped:
+                    logger.info(
+                        "Skipping %d already-embedded verses (checkpoint/resume)", skipped
+                    )
 
         logger.info("Starting embedding for %d verses", len(verses))
 

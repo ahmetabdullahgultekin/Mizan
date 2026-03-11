@@ -4,6 +4,7 @@ FastAPI dependencies for dependency injection.
 Provides repository and service instances to endpoints.
 """
 
+import hmac
 from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, HTTPException, Security, status
@@ -75,7 +76,7 @@ async def verify_api_key(key: str | None = Security(_api_key_header)) -> None:
     if not settings.api_key:
         # Auth disabled — local development mode
         return
-    if key != settings.api_key:
+    if not hmac.compare_digest(key, settings.api_key):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid or missing API key. Provide a valid X-API-Key header.",

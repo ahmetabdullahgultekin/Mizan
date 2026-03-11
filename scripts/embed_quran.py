@@ -50,6 +50,7 @@ async def run(
     embedding_model: str,
     api_key: str,
     batch_size: int,
+    skip_existing: bool = False,
 ) -> None:
     from mizan.application.services.indexing_service import QuranEmbeddingIndexer
     from mizan.infrastructure.config import get_settings
@@ -97,7 +98,10 @@ async def run(
                     "This takes ~5 min on CPU, ~30 sec on GPU."
                 )
 
-            count = await indexer.embed_all_verses(surah_number=surah_number)
+            count = await indexer.embed_all_verses(
+                surah_number=surah_number,
+                skip_existing=skip_existing,
+            )
             logger.info("Done! Embedded %d verses.", count)
 
     finally:
@@ -136,6 +140,15 @@ def main() -> None:
         default=32,
         help="Embedding batch size (default: 32)",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip verses that already have embeddings. "
+            "Use for checkpoint/resume after an interrupted run."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -150,6 +163,7 @@ def main() -> None:
             embedding_model=args.model,
             api_key=args.api_key,
             batch_size=args.batch_size,
+            skip_existing=args.skip_existing,
         )
     )
 

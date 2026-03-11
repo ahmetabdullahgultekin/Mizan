@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+import structlog
+from fastapi import APIRouter, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from mizan.api.dependencies import DbSession
 from mizan.application.dtos.library_requests import SemanticSearchRequest
@@ -26,6 +29,8 @@ from mizan.infrastructure.persistence.library_repositories import (
 )
 
 router = APIRouter(prefix="/search")
+limiter = Limiter(key_func=get_remote_address)
+logger = structlog.get_logger(__name__)
 
 
 def _get_search_service(session: DbSession) -> SemanticSearchService:
@@ -41,7 +46,9 @@ def _get_search_service(session: DbSession) -> SemanticSearchService:
     response_model=SemanticSearchResponse,
     summary="Semantic search across Islamic texts",
 )
+@limiter.limit("30/minute")
 async def semantic_search(
+    request: Request,
     body: SemanticSearchRequest,
     session: DbSession,
 ) -> SemanticSearchResponse:

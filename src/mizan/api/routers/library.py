@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from mizan.api.dependencies import DbSession, verify_api_key
@@ -31,6 +32,7 @@ from mizan.infrastructure.persistence.library_repositories import (
 )
 
 router = APIRouter(prefix="/library")
+logger = structlog.get_logger(__name__)
 
 
 def _get_library_service(session: DbSession) -> LibraryService:
@@ -86,10 +88,16 @@ async def create_library_space(
     response_model=list[LibrarySpaceResponse],
     summary="List all library spaces",
 )
-async def list_library_spaces(session: DbSession) -> list[LibrarySpaceResponse]:
-    """List all Islamic Knowledge Library spaces."""
+async def list_library_spaces(
+    session: DbSession,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[LibrarySpaceResponse]:
+    """List all Islamic Knowledge Library spaces (paginated)."""
+    from fastapi import Query as FQuery
     svc = _get_library_service(session)
     spaces = await svc.list_spaces()
+    paginated = spaces[offset : offset + limit]
     return [
         LibrarySpaceResponse(
             id=s.id,
@@ -97,7 +105,7 @@ async def list_library_spaces(session: DbSession) -> list[LibrarySpaceResponse]:
             description=s.description,
             created_at=s.created_at,
         )
-        for s in spaces
+        for s in paginated
     ]
 
 

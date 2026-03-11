@@ -473,3 +473,17 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
         result = await self._session.execute(stmt)
         return result.scalar_one()
+
+    async def get_embedded_verse_keys(
+        self, model_name: str | None = None
+    ) -> set[tuple[int, int]]:
+        """Return a set of (surah_number, verse_number) for already-embedded verses.
+
+        Used by embed_quran.py to skip verses that already have embeddings,
+        enabling checkpoint/resume on interrupted embedding runs.
+        """
+        stmt = select(VerseEmbeddingModel.surah_number, VerseEmbeddingModel.verse_number)
+        if model_name:
+            stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
+        result = await self._session.execute(stmt)
+        return {(int(row.surah_number), int(row.verse_number)) for row in result.fetchall()}
