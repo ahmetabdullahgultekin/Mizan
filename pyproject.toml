@@ -61,6 +61,8 @@ dependencies = [
     # Arabic NLP (Tier 1-2)
     "pyarabic>=0.6.15",
     "regex>=2023.12.0",
+    # Vector database support (pgvector SQLAlchemy integration)
+    "pgvector>=0.2.0",
 ]
 
 [project.urls]
@@ -95,7 +97,7 @@ minimal = [
     "pyarabic>=0.6.15",
 ]
 
-# Full ML capabilities (Tier 4 - Experimental)
+# Full ML capabilities (Tier 4 - Semantic Search + Embeddings)
 ml = [
     "transformers>=4.36.0",
     "torch>=2.1.0",
@@ -104,6 +106,10 @@ ml = [
     "networkx>=3.2.0",
     "numpy>=1.26.0",
     "scipy>=1.11.0",
+    # Vector database support
+    "pgvector>=0.2.0",
+    # Optional: Google Gemini Embedding API
+    "google-generativeai>=0.8.0",
 ]
 
 [build-system]
@@ -128,7 +134,16 @@ disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["redis.*", "asyncpg.*", "pyarabic.*"]
+module = [
+    "redis.*",
+    "asyncpg.*",
+    "pyarabic.*",
+    "pgvector.*",
+    "sentence_transformers.*",
+    "transformers.*",
+    "torch.*",
+    "google.generativeai.*",
+]
 ignore_missing_imports = true
 
 [tool.ruff]

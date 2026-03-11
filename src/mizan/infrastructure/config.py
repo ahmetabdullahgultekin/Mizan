@@ -93,12 +93,43 @@ class Settings(BaseSettings):
     # Experimental Features
     # ==========================================================================
     enable_semantic_analysis: bool = Field(
-        default=False,
-        description="Enable Tier 4 semantic features",
+        default=True,
+        description="Enable Tier 4 semantic features (Library + Embedding Search)",
     )
     enable_structural_tools: bool = Field(
         default=False,
         description="Enable Tier 5 structural tools",
+    )
+
+    # ==========================================================================
+    # Embedding Configuration (Tier 4 - Semantic Search)
+    # ==========================================================================
+    embedding_provider: str = Field(
+        default="local",
+        description="Embedding provider: 'local' (sentence-transformers) or 'gemini'",
+    )
+    embedding_model: str = Field(
+        default="intfloat/multilingual-e5-base",
+        description=(
+            "Model identifier. For local: HuggingFace model name. "
+            "For gemini: 'gemini-embedding-2-preview' or 'text-embedding-004'"
+        ),
+    )
+    embedding_dimension: int = Field(
+        default=768,
+        ge=64,
+        le=4096,
+        description="Dimension of embedding vectors (must match the model's output)",
+    )
+    embedding_batch_size: int = Field(
+        default=32,
+        ge=1,
+        le=512,
+        description="Number of texts to embed in a single batch",
+    )
+    gemini_api_key: str = Field(
+        default="",
+        description="Google Gemini API key (required when embedding_provider='gemini')",
     )
 
     @field_validator("database_url")

@@ -7,6 +7,12 @@ from mizan.domain.repositories.interfaces import (
     ISurahMetadataRepository,
     MorphologyData,
 )
+from mizan.domain.repositories.library_interfaces import (
+    ILibrarySpaceRepository,
+    ITextChunkRepository,
+    ITextSourceRepository,
+    IVerseEmbeddingRepository,
+)
 
 __all__ = [
     "IntegrityReport",
@@ -14,4 +20,8 @@ __all__ = [
     "IQuranRepository",
     "ISurahMetadataRepository",
     "MorphologyData",
+    "ILibrarySpaceRepository",
+    "ITextChunkRepository",
+    "ITextSourceRepository",
+    "IVerseEmbeddingRepository",
 ]
