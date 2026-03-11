@@ -8,11 +8,18 @@
 import type {
   AnalysisRequest,
   AnalysisResponse,
+  VerseAnalysisResponse,
   VerseResponse,
-  SurahListResponse,
+  SurahMetadata,
   SurahResponse,
   HealthResponse,
   ApiError,
+  LibrarySpaceResponse,
+  CreateLibrarySpaceRequest,
+  TextSourceResponse,
+  AddTextSourceRequest,
+  SemanticSearchRequest,
+  SemanticSearchResponse,
 } from '@/types/api';
 
 export class ApiClient {
@@ -77,6 +84,13 @@ export class ApiClient {
     });
   }
 
+  /**
+   * DELETE request
+   */
+  private delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
+  }
+
   // ==========================================
   // Health & Status
   // ==========================================
@@ -111,10 +125,11 @@ export class ApiClient {
   // ==========================================
 
   /**
-   * Get list of all surahs with metadata
+   * Get list of all surahs with metadata.
+   * Backend returns an array directly (not wrapped).
    */
-  async getSurahList(): Promise<SurahListResponse> {
-    return this.get<SurahListResponse>('/api/v1/surahs');
+  async getSurahList(): Promise<SurahMetadata[]> {
+    return this.get<SurahMetadata[]>('/api/v1/surahs');
   }
 
   /**
@@ -129,51 +144,128 @@ export class ApiClient {
   // ==========================================
 
   /**
-   * Analyze text (letters, words, abjad)
+   * Get full analysis for a verse (letters, words, abjad, frequency).
+   * Endpoint: GET /api/v1/analysis/verse/{surah}/{verse}
    */
-  async analyze(request: AnalysisRequest): Promise<AnalysisResponse> {
-    return this.post<AnalysisResponse>('/api/v1/analyze', request);
+  async analyzeVerse(surah: number, ayah: number): Promise<VerseAnalysisResponse> {
+    return this.get<VerseAnalysisResponse>(`/api/v1/analysis/verse/${surah}/${ayah}`);
   }
 
   /**
-   * Analyze a verse by reference
+   * Count letters in scope (surah/verse or whole Quran).
+   * Endpoint: GET /api/v1/analysis/letters/count
    */
-  async analyzeVerse(
-    surah: number,
-    ayah: number,
-    options?: Partial<AnalysisRequest>
-  ): Promise<AnalysisResponse> {
-    return this.get<AnalysisResponse>(
-      `/api/v1/analyze/verse/${surah}/${ayah}` +
-        (options ? `?${new URLSearchParams(options as Record<string, string>)}` : '')
+  async countLetters(params: {
+    surah?: number;
+    verse?: number;
+    script?: string;
+    count_alif_wasla?: boolean;
+  } = {}): Promise<{ count: number; scope: string; methodology: string }> {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    return this.get(`/api/v1/analysis/letters/count${qs ? `?${qs}` : ''}`);
+  }
+
+  /**
+   * Count words in scope.
+   * Endpoint: GET /api/v1/analysis/words/count
+   */
+  async countWords(params: { surah?: number; verse?: number } = {}): Promise<{
+    count: number;
+    scope: string;
+  }> {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    return this.get(`/api/v1/analysis/words/count${qs ? `?${qs}` : ''}`);
+  }
+
+  /**
+   * Calculate Abjad value.
+   * Endpoint: GET /api/v1/analysis/abjad
+   */
+  async calculateAbjad(params: {
+    text?: string;
+    surah?: number;
+    verse?: number;
+    system?: string;
+    include_breakdown?: boolean;
+  }): Promise<{ value: number; system: string; breakdown?: AnalysisResponse['breakdown'] }> {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    return this.get(`/api/v1/analysis/abjad${qs ? `?${qs}` : ''}`);
+  }
+
+  /**
+   * Search Quran text (trigram-based).
+   * Endpoint: GET /api/v1/search?q=...
+   */
+  async searchQuran(query: string, surah?: number, limit = 50): Promise<AnalysisResponse> {
+    const params: Record<string, string> = { q: query, limit: String(limit) };
+    if (surah) params.surah = String(surah);
+    return this.get(`/api/v1/search?${new URLSearchParams(params)}`);
+  }
+
+  // ==========================================
+  // Library Management (Semantic Search)
+  // ==========================================
+
+  /**
+   * Create a new library space.
+   */
+  async createLibrarySpace(data: CreateLibrarySpaceRequest): Promise<LibrarySpaceResponse> {
+    return this.post<LibrarySpaceResponse>('/api/v1/library/spaces', data);
+  }
+
+  /**
+   * List all library spaces.
+   */
+  async listLibrarySpaces(): Promise<LibrarySpaceResponse[]> {
+    return this.get<LibrarySpaceResponse[]>('/api/v1/library/spaces');
+  }
+
+  /**
+   * Add a text source to a library space.
+   */
+  async addTextSource(spaceId: string, data: AddTextSourceRequest): Promise<TextSourceResponse> {
+    return this.post<TextSourceResponse>(`/api/v1/library/spaces/${spaceId}/sources`, data);
+  }
+
+  /**
+   * Get text source details (including indexing status).
+   */
+  async getTextSource(sourceId: string): Promise<TextSourceResponse> {
+    return this.get<TextSourceResponse>(`/api/v1/library/sources/${sourceId}`);
+  }
+
+  /**
+   * Trigger indexing for a text source.
+   */
+  async indexTextSource(sourceId: string): Promise<{ status: string }> {
+    return this.post(`/api/v1/library/sources/${sourceId}/index`, {});
+  }
+
+  /**
+   * Delete a text source and all its chunks.
+   */
+  async deleteTextSource(sourceId: string): Promise<void> {
+    return this.delete(`/api/v1/library/sources/${sourceId}`);
+  }
+
+  // ==========================================
+  // Semantic Search
+  // ==========================================
+
+  /**
+   * Perform semantic search across indexed text sources.
+   */
+  async semanticSearch(request: SemanticSearchRequest): Promise<SemanticSearchResponse[]> {
+    return this.post<SemanticSearchResponse[]>('/api/v1/search/semantic', request);
+  }
+
+  /**
+   * Find semantically similar verses.
+   */
+  async findSimilarVerses(surah: number, verse: number, limit = 5): Promise<SemanticSearchResponse[]> {
+    return this.get<SemanticSearchResponse[]>(
+      `/api/v1/verses/${surah}/${verse}/similar?limit=${limit}`
     );
-  }
-
-  /**
-   * Get letter count for text
-   */
-  async countLetters(
-    text: string,
-    method: string = 'traditional'
-  ): Promise<{ count: number; method: string }> {
-    return this.post('/api/v1/analyze/letters', { text, method });
-  }
-
-  /**
-   * Get word count for text
-   */
-  async countWords(text: string): Promise<{ count: number }> {
-    return this.post('/api/v1/analyze/words', { text });
-  }
-
-  /**
-   * Calculate Abjad value
-   */
-  async calculateAbjad(
-    text: string,
-    system: string = 'mashriqi'
-  ): Promise<{ value: number; system: string }> {
-    return this.post('/api/v1/analyze/abjad', { text, system });
   }
 }
 

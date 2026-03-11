@@ -13,24 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-
-// Static surah data (simplified for client-side usage)
-const SURAHS = [
-  { number: 1, name_arabic: 'الفاتحة', name_english: 'Al-Fatiha', verse_count: 7 },
-  { number: 2, name_arabic: 'البقرة', name_english: 'Al-Baqara', verse_count: 286 },
-  { number: 3, name_arabic: 'آل عمران', name_english: 'Ali Imran', verse_count: 200 },
-  { number: 4, name_arabic: 'النساء', name_english: 'An-Nisa', verse_count: 176 },
-  { number: 5, name_arabic: 'المائدة', name_english: 'Al-Maida', verse_count: 120 },
-  { number: 6, name_arabic: 'الأنعام', name_english: 'Al-Anam', verse_count: 165 },
-  { number: 7, name_arabic: 'الأعراف', name_english: 'Al-Araf', verse_count: 206 },
-  { number: 8, name_arabic: 'الأنفال', name_english: 'Al-Anfal', verse_count: 75 },
-  { number: 9, name_arabic: 'التوبة', name_english: 'At-Tawba', verse_count: 129 },
-  { number: 10, name_arabic: 'يونس', name_english: 'Yunus', verse_count: 109 },
-  // Add more surahs as needed - this is a simplified list
-  { number: 112, name_arabic: 'الإخلاص', name_english: 'Al-Ikhlas', verse_count: 4 },
-  { number: 113, name_arabic: 'الفلق', name_english: 'Al-Falaq', verse_count: 5 },
-  { number: 114, name_arabic: 'الناس', name_english: 'An-Nas', verse_count: 6 },
-];
+import { getApiClient } from '@/lib/api/client';
+import type { SurahMetadata } from '@/types/api';
 
 interface VerseSelectorProps {
   selectedSurah: number | null;
@@ -43,7 +27,7 @@ interface VerseSelectorProps {
 /**
  * Verse Selector Component
  *
- * Allows users to select a specific verse from the Quran.
+ * Loads surah list from the backend API and lets users pick a verse.
  */
 export function VerseSelector({
   selectedSurah,
@@ -52,12 +36,31 @@ export function VerseSelector({
   onAyahChange,
   className,
 }: VerseSelectorProps) {
-  const selectedSurahData = SURAHS.find((s) => s.number === selectedSurah);
+  const [surahs, setSurahs] = React.useState<SurahMetadata[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    getApiClient()
+      .getSurahList()
+      .then((data) => setSurahs(data))
+      .catch(() => {
+        // Fallback to a minimal static list if API is unreachable
+        setSurahs([
+          { number: 1,   name_arabic: 'الفاتحة', name_english: 'Al-Fatihah',  name_transliteration: 'Al-Fatihah',  revelation_type: 'meccan',   verse_count: 7   },
+          { number: 2,   name_arabic: 'البقرة',   name_english: 'Al-Baqarah',  name_transliteration: 'Al-Baqarah',  revelation_type: 'medinan',  verse_count: 286 },
+          { number: 112, name_arabic: 'الإخلاص', name_english: 'Al-Ikhlas',   name_transliteration: 'Al-Ikhlas',   revelation_type: 'meccan',   verse_count: 4   },
+          { number: 113, name_arabic: 'الفلق',   name_english: 'Al-Falaq',    name_transliteration: 'Al-Falaq',    revelation_type: 'meccan',   verse_count: 5   },
+          { number: 114, name_arabic: 'الناس',   name_english: 'An-Nas',      name_transliteration: 'An-Nas',      revelation_type: 'meccan',   verse_count: 6   },
+        ]);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const selectedSurahData = surahs.find((s) => s.number === selectedSurah);
   const verseCount = selectedSurahData?.verse_count || 0;
 
   const handleSurahChange = (value: string) => {
-    const surahNum = parseInt(value, 10);
-    onSurahChange(surahNum);
+    onSurahChange(parseInt(value, 10));
     onAyahChange(null); // Reset ayah when surah changes
   };
 
@@ -75,16 +78,19 @@ export function VerseSelector({
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Surah Select */}
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">Surah</label>
+          <label className="text-sm text-muted-foreground">
+            Surah {isLoading && <span className="text-xs opacity-60">(loading…)</span>}
+          </label>
           <Select
             value={selectedSurah?.toString() || ''}
             onValueChange={handleSurahChange}
+            disabled={isLoading}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select Surah" />
+              <SelectValue placeholder={isLoading ? 'Loading surahs…' : 'Select Surah'} />
             </SelectTrigger>
             <SelectContent>
-              {SURAHS.map((surah) => (
+              {surahs.map((surah) => (
                 <SelectItem key={surah.number} value={surah.number.toString()}>
                   <span className="flex items-center gap-2">
                     <Badge variant="outline" className="w-8 justify-center text-xs">
@@ -135,7 +141,7 @@ export function VerseSelector({
           <p className="text-sm">
             <span className="text-muted-foreground">Selected: </span>
             <span className="font-medium text-gold-500">
-              {selectedSurahData?.name_english} ({selectedSurahData?.name_arabic}) - Ayah{' '}
+              {selectedSurahData?.name_english} ({selectedSurahData?.name_arabic}) — Ayah{' '}
               {selectedAyah}
             </span>
           </p>
