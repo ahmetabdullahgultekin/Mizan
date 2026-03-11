@@ -86,9 +86,10 @@ dev = [
     "pre-commit>=3.6.0",
 ]
 
-# Error tracking (optional — enable in production by installing this extra)
+# Error tracking and metrics (optional — enable in production by installing this extra)
 observability = [
     "sentry-sdk[fastapi]>=2.0.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
 ]
 
 # Minimal install without ML dependencies (for basic text analysis)

@@ -78,6 +78,15 @@ class IndexingService:
         Returns:
             Number of chunks indexed
         """
+        # Idempotency guard — prevent concurrent duplicate indexing runs
+        existing = await self._sources.get_by_id(source_id)
+        if existing is not None and existing.status == IndexingStatus.INDEXING:
+            logger.warning(
+                "indexing_already_in_progress",
+                source_id=str(source_id),
+            )
+            return 0
+
         # Mark as indexing
         await self._sources.update_status(
             source_id,

@@ -62,11 +62,11 @@ def get_embedding_service() -> IEmbeddingService:
 
         # Validate that both models produce the same embedding dimension.
         # Mismatched dimensions silently corrupt vector search at runtime.
-        if primary.dimension != fallback.dimension:
+        if primary.embedding_dimension != fallback.embedding_dimension:
             raise ValueError(
                 f"Embedding dimension mismatch: primary model '{settings.embedding_model}' "
-                f"has dimension {primary.dimension}, but fallback model "
-                f"'{settings.embedding_fallback_model}' has dimension {fallback.dimension}. "
+                f"has dimension {primary.embedding_dimension}, but fallback model "
+                f"'{settings.embedding_fallback_model}' has dimension {fallback.embedding_dimension}. "
                 "Both models MUST have the same dimension for cascade mode to work."
             )
 

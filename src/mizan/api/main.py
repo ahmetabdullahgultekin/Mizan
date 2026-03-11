@@ -135,6 +135,7 @@ def create_app() -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
     # ---------------------------------------------------------------------------
@@ -202,6 +203,16 @@ def create_app() -> FastAPI:
 
         logger.warning("domain_exception", code=exc.code, detail=exc.message)
         return JSONResponse(status_code=status_code, content=exc.to_dict())
+
+    # ---------------------------------------------------------------------------
+    # Prometheus metrics (optional — only if prometheus_fastapi_instrumentator installed)
+    # ---------------------------------------------------------------------------
+
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator  # type: ignore[import]
+        Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+    except ImportError:
+        pass  # prometheus_fastapi_instrumentator not installed; /metrics unavailable
 
     # ---------------------------------------------------------------------------
     # Routers
