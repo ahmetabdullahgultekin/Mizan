@@ -166,6 +166,7 @@ export default function SearchPage() {
                 }}
                 placeholder="Search by meaning… e.g. 'mercy and forgiveness' or 'الرحمة والمغفرة'"
                 dir="auto"
+                aria-label="Semantic search query"
                 className="w-full rounded-xl border bg-background pl-12 pr-4 py-3.5 text-base
                            placeholder:text-muted-foreground
                            focus:outline-none focus:ring-2 focus:ring-gold-500/50"

@@ -36,36 +36,59 @@ export class ApiClient {
     };
   }
 
+  private static readonly REQUEST_TIMEOUT_MS = 30_000;
+  private static readonly MAX_RETRIES = 2;
+  private static readonly RETRY_DELAY_MS = 1_000;
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    let lastError: ApiClientError | undefined;
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        ...options,
-        headers: {
-          ...this.defaultHeaders,
-          ...options.headers,
-        },
-      });
-    } catch (error) {
-      throw new ApiClientError(
-        error instanceof Error ? error.message : 'Network error',
-        0,
-        { detail: 'Network error', status_code: 0 }
-      );
+    for (let attempt = 0; attempt <= ApiClient.MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), ApiClient.REQUEST_TIMEOUT_MS);
+
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            ...this.defaultHeaders,
+            ...options.headers,
+          },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const error: ApiError = await response.json().catch(() => ({
+            detail: 'An unknown error occurred',
+            status_code: response.status,
+          }));
+
+          throw new ApiClientError(error.detail || `HTTP ${response.status}`, response.status, error);
+        }
+
+        return response.json();
+      } catch (error) {
+        if (error instanceof ApiClientError && !error.isNetworkError()) {
+          throw error; // Don't retry non-network errors (4xx, 5xx with body)
+        }
+
+        const message = error instanceof Error ? error.message : 'Network error';
+        lastError = new ApiClientError(
+          message,
+          0,
+          { detail: message, status_code: 0 }
+        );
+
+        if (attempt < ApiClient.MAX_RETRIES) {
+          await new Promise((r) => setTimeout(r, ApiClient.RETRY_DELAY_MS * (attempt + 1)));
+        }
+      }
     }
 
-    if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
-        detail: 'An unknown error occurred',
-        status_code: response.status,
-      }));
-
-      throw new ApiClientError(error.detail || `HTTP ${response.status}`, response.status, error);
-    }
-
-    return response.json();
+    throw lastError!;
   }
 
   private get<T>(endpoint: string): Promise<T> {

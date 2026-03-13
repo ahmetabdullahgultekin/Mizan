@@ -187,6 +187,7 @@ export default function PlaygroundPage() {
                       value={customText}
                       onChange={(e) => setCustomText(e.target.value)}
                       placeholder="اكتب النص العربي هنا..."
+                      aria-label="Enter Arabic text for analysis"
                       className="min-h-[120px]"
                     />
                     <p className="text-xs text-muted-foreground">

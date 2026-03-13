@@ -177,6 +177,7 @@ source = ["src/mizan"]
 branch = true
 
 [tool.coverage.report]
+fail_under = 75
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
