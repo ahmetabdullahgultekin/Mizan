@@ -6,8 +6,8 @@ Configures the API with routers, middleware, and lifecycle events.
 
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Request, Response
@@ -64,7 +64,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
 
     _init_sentry()
-    await init_db()
+    # In non-production environments, ensure tables exist for local development.
+    if not settings.is_production:
+        await init_db()
+
+    # Initialize cache
+    _init_sentry()
     await get_cache()
 
     logger.info("Mizan API started", version=__version__, env=settings.log_level)

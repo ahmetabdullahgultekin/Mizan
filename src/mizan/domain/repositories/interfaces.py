@@ -8,9 +8,10 @@ Implementations are provided by the infrastructure layer (adapters).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mizan.domain.entities import Surah, Verse
@@ -141,7 +142,7 @@ class IQuranRepository(ABC):
         ...
 
     @abstractmethod
-    async def stream_verses(
+    def stream_verses(
         self,
         surah_number: int | None = None,
     ) -> AsyncIterator[Verse]:

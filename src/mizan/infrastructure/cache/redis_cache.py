@@ -5,7 +5,7 @@ Provides async caching with configurable TTL.
 """
 
 import json
-from functools import lru_cache
+from collections.abc import Awaitable
 from typing import Any
 
 import redis.asyncio as redis
@@ -37,7 +37,7 @@ class RedisCache:
             encoding="utf-8",
             decode_responses=True,
             max_connections=settings.redis_pool_size,
-        )
+        )  # type: ignore[no-untyped-call]
         return cls(client)
 
     async def close(self) -> None:
@@ -101,7 +101,7 @@ class RedisCache:
         """
         cache_key = self._make_key(namespace, key)
         result = await self._redis.delete(cache_key)
-        return result > 0
+        return int(result) > 0
 
     async def clear_namespace(self, namespace: str) -> int:
         """
@@ -111,18 +111,18 @@ class RedisCache:
             Number of keys deleted
         """
         pattern = self._make_key(namespace, "*")
-        keys = []
+        keys: list[str] = []
         async for key in self._redis.scan_iter(match=pattern):
             keys.append(key)
 
         if keys:
-            return await self._redis.delete(*keys)
+            return int(await self._redis.delete(*keys))
         return 0
 
     async def exists(self, namespace: str, key: str) -> bool:
         """Check if a key exists in cache."""
         cache_key = self._make_key(namespace, key)
-        return await self._redis.exists(cache_key) > 0
+        return int(await self._redis.exists(cache_key)) > 0
 
     async def get_or_set(
         self,
@@ -148,10 +148,11 @@ class RedisCache:
             return value
 
         # Compute value
-        if callable(factory):
-            value = await factory() if hasattr(factory, "__await__") else factory()
+        computed = factory() if callable(factory) else factory
+        if isinstance(computed, Awaitable):
+            value = await computed
         else:
-            value = factory
+            value = computed
 
         await self.set(namespace, key, value, ttl)
         return value
@@ -197,9 +198,12 @@ class RedisCache:
     async def health_check(self) -> bool:
         """Check if Redis is healthy."""
         try:
-            await self._redis.ping()
+            ping_result = self._redis.ping()
+            if isinstance(ping_result, bool):
+                return ping_result
+            await ping_result
             return True
-        except Exception:
+        except redis.RedisError:
             return False
 
 

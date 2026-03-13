@@ -25,6 +25,7 @@ export interface AnalysisRequest {
   text?: string;
   surah?: number;
   ayah?: number;
+  script_type?: ScriptType;
   letter_method?: LetterCountMethod;
   abjad_system?: AbjadSystem;
   include_breakdown?: boolean;
@@ -37,18 +38,28 @@ export interface AnalysisRequest {
 export interface HealthResponse {
   status: string;
   version: string;
+  database: boolean;
+  cache: boolean;
   timestamp: string;
 }
 
 export interface VerseResponse {
-  surah: number;
-  ayah: number;
-  text: string;
-  text_simple?: string;
-  text_uthmani?: string;
-  juz?: number;
-  hizb?: number;
-  page?: number;
+  surah_number: number;
+  verse_number: number;
+  text_uthmani: string;
+  text_simple?: string | null;
+  juz_number: number;
+  hizb_number: number;
+  manzil_number: number;
+  page_number: number;
+  ruku_number: number;
+  is_sajdah: boolean;
+  sajdah_type?: string | null;
+  word_count: number;
+  letter_count: number;
+  abjad_value: number;
+  surah_name_arabic: string;
+  surah_name_english: string;
 }
 
 export interface SurahMetadata {
@@ -57,18 +68,27 @@ export interface SurahMetadata {
   name_english: string;
   name_transliteration: string;
   revelation_type: RevelationType;
+  revelation_order: number;
   verse_count: number;
-  word_count?: number;
-  letter_count?: number;
+  word_count: number;
+  letter_count: number;
+  ruku_count: number;
 }
 
-export interface SurahListResponse {
-  surahs: SurahMetadata[];
-  total: number;
-}
+export type SurahListResponse = SurahMetadata[];
 
-export interface SurahResponse extends SurahMetadata {
-  verses: VerseResponse[];
+export type SurahResponse = SurahMetadata;
+
+export interface SurahVersesResponse {
+  surah_number: number;
+  surah_name: string;
+  verse_count: number;
+  verses: Array<{
+    number: number;
+    text: string;
+    word_count: number;
+    letter_count: number;
+  }>;
 }
 
 export interface LetterBreakdown {

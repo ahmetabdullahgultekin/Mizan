@@ -1,17 +1,17 @@
 'use client';
 
-import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RotateCcw, History, Keyboard, AlertCircle, GitBranch } from 'lucide-react';
+import * as React from 'react';
 
-import { cn } from '@/lib/utils';
+import { GlowingOrbs } from '@/components/animated/floating-particles';
+import { Spotlight } from '@/components/animated/spotlight';
+import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/playground';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArabicTextarea } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/playground';
-import { Spotlight } from '@/components/animated/spotlight';
-import { GlowingOrbs } from '@/components/animated/floating-particles';
+import { useSurahList } from '@/hooks/use-verse-analysis';
 import { getApiClient } from '@/lib/api/client';
 import type {
   LetterCountMethod,
@@ -40,6 +40,7 @@ export default function PlaygroundPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [similarVerses, setSimilarVerses] = React.useState<SimilarVerseResponse[]>([]);
   const [isFindingSimilar, setIsFindingSimilar] = React.useState(false);
+  const { surahs, isLoading: isLoadingSurahs } = useSurahList();
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -51,10 +52,8 @@ export default function PlaygroundPage() {
       const client = getApiClient();
 
       if (inputMode === 'verse' && selectedSurah && selectedAyah) {
-        // Real API call — verse analysis
         const raw: VerseAnalysisResponse = await client.analyzeVerse(selectedSurah, selectedAyah);
 
-        // Map backend VerseAnalysisResponse → AnalysisResponse for the UI
         const breakdown = raw.letter_frequency?.top_items?.map((item) => ({
           letter: item.letter,
           count: item.count,
@@ -73,7 +72,6 @@ export default function PlaygroundPage() {
           metadata: { surah: selectedSurah, ayah: selectedAyah },
         });
       } else {
-        // Custom text: use backend endpoints for accurate Arabic counting
         const [letterRes, wordRes, abjadRes] = await Promise.all([
           client.countLetters({ text: customText }),
           client.countWords({ text: customText }),
@@ -96,9 +94,7 @@ export default function PlaygroundPage() {
       }
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Analysis failed. Make sure the backend is running.'
+        err instanceof Error ? err.message : 'Analysis failed. Make sure the backend is running.'
       );
     } finally {
       setIsAnalyzing(false);
@@ -113,7 +109,6 @@ export default function PlaygroundPage() {
       const verses = await getApiClient().findSimilarVerses(selectedSurah, selectedAyah, 5);
       setSimilarVerses(verses);
     } catch (err) {
-      // Similar verses require pre-computed embeddings — show actionable hint
       setError(
         err instanceof Error && err.message.includes('404')
           ? 'No verse embeddings found. Run scripts/embed_quran.py to enable similarity search.'
@@ -138,11 +133,9 @@ export default function PlaygroundPage() {
 
   return (
     <div className="relative min-h-screen pt-20">
-      {/* Background */}
       <GlowingOrbs className="opacity-30" />
 
       <div className="container relative z-10 mx-auto px-4 py-12">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -153,16 +146,14 @@ export default function PlaygroundPage() {
             Interactive Playground
           </Badge>
           <h1 className="mb-4 text-3xl font-bold md:text-4xl">
-            Quranic Text{' '}
-            <span className="text-gradient-gold">Analysis</span>
+            Quranic Text <span className="text-gradient-gold">Analysis</span>
           </h1>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Analyze Quranic verses or custom Arabic text with precision letter counting,
-            word analysis, and Abjad calculations.
+            Analyze Quranic verses or custom Arabic text with precision letter counting, word
+            analysis, and Abjad calculations.
           </p>
         </motion.div>
 
-        {/* Main Content */}
         <div className="mx-auto max-w-4xl">
           <Spotlight className="rounded-2xl">
             <motion.div
@@ -171,7 +162,6 @@ export default function PlaygroundPage() {
               transition={{ delay: 0.2 }}
               className="glass-card rounded-2xl p-6 md:p-8"
             >
-              {/* Input Mode Tabs */}
               <Tabs
                 value={inputMode}
                 onValueChange={(value) => setInputMode(value as 'verse' | 'custom')}
@@ -188,7 +178,6 @@ export default function PlaygroundPage() {
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Custom Text Input */}
                 <TabsContent value="custom" className="mt-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">
@@ -206,9 +195,10 @@ export default function PlaygroundPage() {
                   </div>
                 </TabsContent>
 
-                {/* Verse Selection */}
                 <TabsContent value="verse" className="mt-4">
                   <VerseSelector
+                    surahs={surahs}
+                    isLoadingSurahs={isLoadingSurahs}
                     selectedSurah={selectedSurah}
                     selectedAyah={selectedAyah}
                     onSurahChange={setSelectedSurah}
@@ -217,7 +207,6 @@ export default function PlaygroundPage() {
                 </TabsContent>
               </Tabs>
 
-              {/* Method Settings */}
               <MethodSelector
                 letterMethod={letterMethod}
                 abjadSystem={abjadSystem}
@@ -226,7 +215,6 @@ export default function PlaygroundPage() {
                 className="mb-6"
               />
 
-              {/* Action Buttons */}
               <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <Button
                   variant="glow"
@@ -260,7 +248,6 @@ export default function PlaygroundPage() {
                 </Button>
               </div>
 
-              {/* Error state */}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -269,27 +256,25 @@ export default function PlaygroundPage() {
                     exit={{ opacity: 0 }}
                     className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4"
                   >
-                    <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                     <div>
-                      <p className="font-medium text-destructive text-sm">Analysis Failed</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
+                      <p className="text-sm font-medium text-destructive">Analysis Failed</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{error}</p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Results */}
               <AnalysisResults result={result} isLoading={isAnalyzing} />
 
-              {/* Find Similar Verses (verse mode only, after analysis) */}
               {inputMode === 'verse' && result && selectedSurah && selectedAyah && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="mt-6 border-t pt-6"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-medium flex items-center gap-2">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 text-sm font-medium">
                       <GitBranch className="h-4 w-4 text-gold-500" />
                       Similar Verses
                     </h3>
@@ -319,13 +304,15 @@ export default function PlaygroundPage() {
                               setSimilarVerses([]);
                               setResult(null);
                             }}
-                            className="w-full flex items-center justify-between rounded-lg border p-3 text-left hover:border-gold-500/40 transition-colors"
+                            className="w-full rounded-lg border p-3 text-left transition-colors hover:border-gold-500/40"
                           >
-                            <span className="text-sm font-mono">
-                              {v.surah_number}:{v.verse_number}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {Math.round(v.similarity_score * 100)}% similar
+                            <span className="flex items-center justify-between">
+                              <span className="text-sm font-mono">
+                                {v.surah_number}:{v.verse_number}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {Math.round(v.similarity_score * 100)}% similar
+                              </span>
                             </span>
                           </button>
                         ))}
@@ -337,7 +324,6 @@ export default function PlaygroundPage() {
             </motion.div>
           </Spotlight>
 
-          {/* Tips Section */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -366,9 +352,6 @@ export default function PlaygroundPage() {
   );
 }
 
-/**
- * Tip Card Component
- */
 function TipCard({
   title,
   description,

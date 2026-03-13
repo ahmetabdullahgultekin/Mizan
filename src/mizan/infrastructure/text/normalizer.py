@@ -17,6 +17,17 @@ class ArabicNormalizer:
     This allows precise control over text processing for different use cases.
     """
 
+    # Explicit normalization progression order.
+    # Comparing enum string values lexicographically is incorrect for this use case.
+    LEVEL_ORDER: Final[dict[NormalizationLevel, int]] = {
+        NormalizationLevel.NONE: 0,
+        NormalizationLevel.TASHKEEL_REMOVED: 1,
+        NormalizationLevel.HAMZA_UNIFIED: 2,
+        NormalizationLevel.ALIF_UNIFIED: 3,
+        NormalizationLevel.YA_UNIFIED: 4,
+        NormalizationLevel.FULL: 5,
+    }
+
     # Tashkeel (diacritical marks) - vowels and other marks
     TASHKEEL: Final[frozenset[str]] = frozenset([
         "\u064B",  # Fathatan ً
@@ -115,19 +126,19 @@ class ArabicNormalizer:
             return text
 
         # Level 1: Remove tashkeel
-        if level.value >= NormalizationLevel.TASHKEEL_REMOVED.value:
+        if self._is_at_least(level, NormalizationLevel.TASHKEEL_REMOVED):
             text = self._remove_tashkeel(text)
 
         # Level 2: Unify Hamza
-        if level.value >= NormalizationLevel.HAMZA_UNIFIED.value:
+        if self._is_at_least(level, NormalizationLevel.HAMZA_UNIFIED):
             text = self._unify_hamza(text)
 
         # Level 3: Unify Alif
-        if level.value >= NormalizationLevel.ALIF_UNIFIED.value:
+        if self._is_at_least(level, NormalizationLevel.ALIF_UNIFIED):
             text = self._unify_alif(text)
 
         # Level 4: Unify Ya
-        if level.value >= NormalizationLevel.YA_UNIFIED.value:
+        if self._is_at_least(level, NormalizationLevel.YA_UNIFIED):
             text = self._unify_ya(text)
 
         # Level 5 (FULL): Additional cleanup
@@ -135,6 +146,14 @@ class ArabicNormalizer:
             text = self._full_normalize(text)
 
         return text
+
+    def _is_at_least(
+        self,
+        current: NormalizationLevel,
+        threshold: NormalizationLevel,
+    ) -> bool:
+        """Check whether the current level includes the threshold level."""
+        return self.LEVEL_ORDER[current] >= self.LEVEL_ORDER[threshold]
 
     def _remove_tashkeel(self, text: str) -> str:
         """Remove all diacritical marks."""

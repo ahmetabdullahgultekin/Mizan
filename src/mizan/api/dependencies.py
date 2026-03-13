@@ -5,7 +5,8 @@ Provides repository and service instances to endpoints.
 """
 
 import hmac
-from typing import Annotated, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader

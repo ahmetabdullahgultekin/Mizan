@@ -3,7 +3,14 @@
 import * as React from 'react';
 
 import { useApiClient } from '@/lib/api/provider';
-import type { AnalysisResponse, AnalysisRequest, LetterCountMethod, AbjadSystem } from '@/types/api';
+import type {
+  AbjadSystem,
+  AnalysisRequest,
+  AnalysisResponse,
+  LetterCountMethod,
+  SurahMetadata,
+  VerseResponse,
+} from '@/types/api';
 
 interface UseVerseAnalysisOptions {
   onSuccess?: (result: AnalysisResponse) => void;
@@ -138,7 +145,7 @@ export function useVerseAnalysis(options?: UseVerseAnalysisOptions) {
  */
 export function useSurahList() {
   const client = useApiClient();
-  const [surahs, setSurahs] = React.useState<{ number: number; name_arabic: string; name_english: string; verse_count: number }[]>([]);
+  const [surahs, setSurahs] = React.useState<SurahMetadata[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
 
@@ -166,7 +173,7 @@ export function useSurahList() {
  */
 export function useVerse(surah: number | null, ayah: number | null) {
   const client = useApiClient();
-  const [verse, setVerse] = React.useState<{ text: string } | null>(null);
+  const [verse, setVerse] = React.useState<VerseResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
 

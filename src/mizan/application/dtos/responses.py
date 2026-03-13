@@ -207,6 +207,36 @@ class VerseAnalysisResponse(BaseModel):
     letter_frequency: VerseFrequencyResponse
 
 
+class UnifiedBreakdownItem(BaseModel):
+    """Letter-level breakdown entry for unified analysis."""
+
+    letter: str
+    count: int
+    percentage: float
+    abjad_value: int | None = None
+
+
+class UnifiedAnalysisMetadata(BaseModel):
+    """Optional metadata for unified analysis responses."""
+
+    surah: int | None = None
+    ayah: int | None = None
+    source: str | None = None
+
+
+class UnifiedAnalysisResponse(BaseModel):
+    """Unified analysis response consumed by the website playground."""
+
+    text: str
+    letter_count: int
+    word_count: int
+    abjad_value: int
+    letter_method: str
+    abjad_system: str
+    breakdown: list[UnifiedBreakdownItem] | None = None
+    metadata: UnifiedAnalysisMetadata | None = None
+
+
 class IntegrityResponse(BaseModel):
     """Integrity verification response."""
 

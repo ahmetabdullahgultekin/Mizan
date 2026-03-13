@@ -5,9 +5,14 @@ This is the main application service that coordinates
 domain services, repositories, and caching.
 """
 
-from typing import Any
+from typing import Any, cast
 
-from mizan.domain.enums import AbjadSystem, NormalizationLevel, ScriptType
+from mizan.domain.enums import (
+    AbjadSystem,
+    LetterCountMethod,
+    NormalizationLevel,
+    ScriptType,
+)
 from mizan.domain.repositories import IQuranRepository
 from mizan.domain.services import AbjadCalculator, LetterCounter, WordCounter
 from mizan.domain.value_objects import VerseLocation
@@ -68,11 +73,14 @@ class AnalyzerService:
             Dictionary with count and methodology
         """
         _use_cache = text is None
-        cache_key = f"letters:{surah_number}:{verse_number}:{script_type.value}"
+        cache_key = (
+            f"letters:{surah_number}:{verse_number}:{script_type.value}:"
+            f"wasla={int(count_alif_wasla)}:khanjariyya={int(count_alif_khanjariyya)}"
+        )
         if _use_cache and self._cache:
             cached = await self._cache.get("analysis", cache_key)
-            if cached:
-                return cached
+            if isinstance(cached, dict):
+                return cast(dict[str, Any], cached)
 
         if text is None:
             text = await self._get_text(surah_number, verse_number, script_type)
@@ -83,7 +91,7 @@ class AnalyzerService:
             count_alif_khanjariyya=count_alif_khanjariyya,
         )
 
-        result = {
+        result: dict[str, Any] = {
             "count": count,
             "scope": {
                 "surah": surah_number,
@@ -120,15 +128,15 @@ class AnalyzerService:
         cache_key = f"words:{surah_number}:{verse_number}:{script_type.value}"
         if _use_cache and self._cache:
             cached = await self._cache.get("analysis", cache_key)
-            if cached:
-                return cached
+            if isinstance(cached, dict):
+                return cast(dict[str, Any], cached)
 
         if text is None:
             text = await self._get_text(surah_number, verse_number, script_type)
 
         word_result = self._word_counter.count_words(text)
 
-        result = {
+        result: dict[str, Any] = {
             "count": word_result.count,
             "scope": {
                 "surah": surah_number,
@@ -183,6 +191,73 @@ class AnalyzerService:
                 {"letter": letter, "abjad_value": value}
                 for letter, value in abjad_value.letter_breakdown
             ]
+
+        return result
+
+    async def analyze_text(
+        self,
+        text: str | None = None,
+        surah_number: int | None = None,
+        verse_number: int | None = None,
+        script_type: ScriptType = ScriptType.UTHMANI,
+        letter_method: LetterCountMethod = LetterCountMethod.TRADITIONAL,
+        abjad_system: AbjadSystem = AbjadSystem.MASHRIQI,
+        include_breakdown: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Run unified analysis for custom text or Quran scope.
+
+        Returns a frontend-oriented payload including letter count, word count,
+        Abjad value, and optional letter-level breakdown.
+        """
+        if text is None and surah_number is None:
+            raise ValueError("Either text or surah_number must be provided")
+
+        if verse_number is not None and surah_number is None:
+            raise ValueError("verse_number requires surah_number")
+
+        analysis_text = (
+            text if text is not None else
+            await self._get_text(surah_number, verse_number, script_type)
+        )
+
+        letter_count = self._letter_counter.count_letters(
+            analysis_text,
+            method=letter_method,
+        )
+        word_count = self._word_counter.count_words(analysis_text).count
+        abjad = self._abjad_calculator.calculate(analysis_text, abjad_system)
+
+        result: dict[str, Any] = {
+            "text": analysis_text,
+            "letter_count": letter_count,
+            "word_count": word_count,
+            "abjad_value": abjad.value,
+            "letter_method": letter_method.value,
+            "abjad_system": abjad_system.value,
+            "metadata": {
+                "surah": surah_number,
+                "ayah": verse_number,
+                "source": "custom_text" if text is not None else "quran_scope",
+            },
+        }
+
+        if include_breakdown:
+            frequency = self._letter_counter.get_letter_frequency(
+                analysis_text,
+                normalize_variants=True,
+            )
+            total_letters = sum(frequency.values())
+            breakdown: list[dict[str, Any]] = []
+            for letter, count in sorted(frequency.items(), key=lambda item: item[1], reverse=True):
+                percentage = (count / total_letters * 100) if total_letters else 0.0
+                breakdown.append({
+                    "letter": letter,
+                    "count": count,
+                    "percentage": round(percentage, 2),
+                    "abjad_value": self._abjad_calculator.get_value(letter, abjad_system),
+                })
+            result["breakdown"] = breakdown
 
         return result
 

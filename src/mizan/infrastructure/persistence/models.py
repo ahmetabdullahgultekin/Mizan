@@ -21,7 +21,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 try:
@@ -127,7 +128,10 @@ class VerseModel(Base):
     text_no_tashkeel: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Qira'at variants stored as JSON
-    qiraat_variants: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    qiraat_variants: Mapped[dict[str, dict[str, str]] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
 
     # Structural divisions
     juz_number: Mapped[int] = mapped_column(Integer, nullable=False)

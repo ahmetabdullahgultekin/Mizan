@@ -1,12 +1,12 @@
 """Analysis endpoints for counting, Abjad, and frequency operations."""
 
 import asyncio
+from typing import Annotated
 
-import structlog
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from mizan.api.dependencies import Analyzer
-from mizan.application.dtos.requests import AbjadRequest, SearchRequest
+from mizan.application.dtos.requests import UnifiedAnalysisRequest
 from mizan.application.dtos.responses import (
     AbjadBreakdownItem,
     AbjadResponse,
@@ -14,6 +14,7 @@ from mizan.application.dtos.responses import (
     FrequencyItemResponse,
     FrequencyResponse,
     SearchResponse,
+    UnifiedAnalysisResponse,
     VerseAbjadResponse,
     VerseAnalysisResponse,
     VerseFrequencyResponse,
@@ -24,7 +25,27 @@ from mizan.domain.enums import AbjadSystem, NormalizationLevel, ScriptType
 from mizan.domain.exceptions import DomainException
 
 router = APIRouter()
-logger = structlog.get_logger(__name__)
+
+
+@router.post("/analyze", response_model=UnifiedAnalysisResponse)
+async def analyze(
+    payload: UnifiedAnalysisRequest,
+    analyzer: Analyzer,
+) -> UnifiedAnalysisResponse:
+    """Unified analysis endpoint for custom text and verse/surah scope."""
+    try:
+        result = await analyzer.analyze_text(
+            text=payload.text,
+            surah_number=payload.surah,
+            verse_number=payload.ayah,
+            script_type=payload.script_type,
+            letter_method=payload.letter_method,
+            abjad_system=payload.abjad_system,
+            include_breakdown=payload.include_breakdown,
+        )
+        return UnifiedAnalysisResponse(**result)
+    except (DomainException, ValueError) as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/analysis/letters/count", response_model=CountResponse)
@@ -32,7 +53,7 @@ async def count_letters(
     analyzer: Analyzer,
     surah: int | None = Query(None, ge=1, le=114, description="Surah number"),
     verse: int | None = Query(None, ge=1, description="Verse number"),
-    script: ScriptType = Query(ScriptType.UTHMANI, description="Script type"),
+    script: Annotated[ScriptType, Query(description="Script type")] = ScriptType.UTHMANI,
     count_alif_wasla: bool = Query(True, description="Count Alif Wasla"),
     count_alif_khanjariyya: bool = Query(True, description="Count Alif Khanjariyya"),
     text: str | None = Query(None, max_length=10000, description="Arbitrary text to count"),
@@ -61,8 +82,8 @@ async def count_letters(
             scope=result["scope"],
             methodology=result["methodology"],
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/analysis/words/count", response_model=CountResponse)
@@ -70,7 +91,7 @@ async def count_words(
     analyzer: Analyzer,
     surah: int | None = Query(None, ge=1, le=114),
     verse: int | None = Query(None, ge=1),
-    script: ScriptType = Query(ScriptType.UTHMANI),
+    script: Annotated[ScriptType, Query()] = ScriptType.UTHMANI,
     text: str | None = Query(None, max_length=10000, description="Arbitrary text to count"),
 ) -> CountResponse:
     """
@@ -91,8 +112,8 @@ async def count_words(
             scope=result["scope"],
             methodology=result["methodology"],
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/analysis/abjad", response_model=AbjadResponse)
@@ -121,13 +142,16 @@ async def calculate_abjad(
         return AbjadResponse(
             value=result["value"],
             system=system,
-            text_analyzed=result.get("text_analyzed", text or f"Surah {surah}" + (f":{verse}" if verse else "")),
+            text_analyzed=result.get(
+                "text_analyzed",
+                text or f"Surah {surah}" + (f":{verse}" if verse else ""),
+            ),
             breakdown=result.get("breakdown"),
             is_prime=result["is_prime"],
             digital_root=result["digital_root"],
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/analysis/letters/frequency", response_model=FrequencyResponse)
@@ -135,7 +159,7 @@ async def get_letter_frequency(
     analyzer: Analyzer,
     surah: int | None = Query(None, ge=1, le=114),
     verse: int | None = Query(None, ge=1),
-    script: ScriptType = Query(ScriptType.UTHMANI),
+    script: Annotated[ScriptType, Query()] = ScriptType.UTHMANI,
     normalize_variants: bool = Query(True, description="Group letter variants"),
 ) -> FrequencyResponse:
     """
@@ -158,8 +182,8 @@ async def get_letter_frequency(
             distribution=result["distribution"],
             top_items=top_items,
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/search", response_model=SearchResponse)
@@ -167,7 +191,7 @@ async def search_quran(
     analyzer: Analyzer,
     q: str = Query(..., min_length=1, max_length=500, description="Search query"),
     surah: int | None = Query(None, ge=1, le=114),
-    normalization: NormalizationLevel = Query(NormalizationLevel.FULL),
+    normalization: Annotated[NormalizationLevel, Query()] = NormalizationLevel.FULL,
     limit: int = Query(100, ge=1, le=1000),
 ) -> SearchResponse:
     """
@@ -188,11 +212,12 @@ async def search_quran(
             results=result["results"],
             methodology=result["methodology"],
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err
 
 
 @router.get("/analysis/verse/{surah}/{verse}", response_model=VerseAnalysisResponse)
+@router.get("/analyze/verse/{surah}/{verse}", include_in_schema=False)
 async def analyze_verse(
     analyzer: Analyzer,
     surah: int = Path(..., ge=1, le=114),
@@ -255,5 +280,5 @@ async def analyze_verse(
                 top_items=top_items,
             ),
         )
-    except DomainException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except DomainException as err:
+        raise HTTPException(status_code=400, detail=str(err)) from err

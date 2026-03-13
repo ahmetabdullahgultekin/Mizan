@@ -1,16 +1,16 @@
 """Verse and Surah endpoints."""
 
+from typing import Annotated, Any
+
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from mizan.api.dependencies import Analyzer, QuranRepo, SurahRepo
 from mizan.application.dtos.responses import (
-    SurahDetailResponse,
     SurahResponse,
     VerseResponse,
 )
 from mizan.domain.enums import RevelationType, ScriptType
 from mizan.domain.exceptions import SurahNotFoundError, VerseNotFoundError
-from mizan.domain.value_objects import VerseLocation
 
 router = APIRouter()
 
@@ -29,14 +29,17 @@ async def get_verse(
     try:
         result = await analyzer.get_verse(surah, verse)
         return VerseResponse(**result)
-    except VerseNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except VerseNotFoundError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
 
 
 @router.get("/surahs", response_model=list[SurahResponse])
 async def list_surahs(
     surah_repo: SurahRepo,
-    revelation_type: RevelationType | None = Query(None, description="Filter by revelation type"),
+    revelation_type: Annotated[
+        RevelationType | None,
+        Query(description="Filter by revelation type"),
+    ] = None,
 ) -> list[SurahResponse]:
     """
     List all surahs with metadata.
@@ -87,16 +90,16 @@ async def get_surah(
             letter_count=m.letter_count,
             ruku_count=m.ruku_count,
         )
-    except SurahNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except SurahNotFoundError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
 
 
 @router.get("/surahs/{surah_number}/verses")
 async def get_surah_verses(
     quran_repo: QuranRepo,
     surah_number: int = Path(..., ge=1, le=114),
-    script: ScriptType = Query(ScriptType.UTHMANI, description="Script type"),
-) -> dict:
+    script: Annotated[ScriptType, Query(description="Script type")] = ScriptType.UTHMANI,
+) -> dict[str, Any]:
     """
     Get all verses for a surah.
 
@@ -118,15 +121,15 @@ async def get_surah_verses(
                 for v in surah.verses
             ],
         }
-    except SurahNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except SurahNotFoundError as err:
+        raise HTTPException(status_code=404, detail=str(err)) from err
 
 
 @router.get("/juz/{juz_number}/verses")
 async def get_juz_verses(
     quran_repo: QuranRepo,
     juz_number: int = Path(..., ge=1, le=30, description="Juz number"),
-) -> dict:
+) -> dict[str, Any]:
     """
     Get all verses in a Juz (part).
 
@@ -151,7 +154,7 @@ async def get_juz_verses(
 @router.get("/sajdah/verses")
 async def get_sajdah_verses(
     quran_repo: QuranRepo,
-) -> dict:
+) -> dict[str, Any]:
     """
     Get all verses with prostration marks.
 

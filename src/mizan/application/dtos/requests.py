@@ -1,9 +1,11 @@
 """Request DTOs for API endpoints."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from mizan.domain.enums import (
+    AbjadSystem,
     AnalysisType,
+    LetterCountMethod,
     NormalizationLevel,
     ScriptType,
     WordFormInclusion,
@@ -20,7 +22,7 @@ class VerseRangeRequest(BaseModel):
 
     @field_validator("end_surah")
     @classmethod
-    def validate_range(cls, v: int, info) -> int:
+    def validate_range(cls, v: int, info: ValidationInfo) -> int:
         """Ensure end is not before start."""
         start_surah = info.data.get("start_surah")
         if start_surah and v < start_surah:
@@ -83,7 +85,11 @@ class AnalysisRequest(BaseModel):
 
     @field_validator("verse_number")
     @classmethod
-    def validate_verse_requires_surah(cls, v: int | None, info) -> int | None:
+    def validate_verse_requires_surah(
+        cls,
+        v: int | None,
+        info: ValidationInfo,
+    ) -> int | None:
         """Ensure verse_number requires surah_number."""
         if v is not None and info.data.get("surah_number") is None:
             raise ValueError("verse_number requires surah_number")
@@ -110,3 +116,31 @@ class AbjadRequest(BaseModel):
     verse_number: int | None = Field(None, ge=1)
     system: str = Field(default="mashriqi", pattern="^(mashriqi|maghribi)$")
     include_breakdown: bool = Field(default=False)
+
+
+class UnifiedAnalysisRequest(BaseModel):
+    """Unified analysis request for custom text or Quran scope analysis."""
+
+    text: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=5000,
+        description="Custom Arabic text to analyze",
+    )
+    surah: int | None = Field(default=None, ge=1, le=114, description="Surah number")
+    ayah: int | None = Field(default=None, ge=1, description="Verse number")
+    script_type: ScriptType = Field(default=ScriptType.UTHMANI)
+    letter_method: LetterCountMethod = Field(default=LetterCountMethod.TRADITIONAL)
+    abjad_system: AbjadSystem = Field(default=AbjadSystem.MASHRIQI)
+    include_breakdown: bool = Field(default=True)
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> "UnifiedAnalysisRequest":
+        """Ensure request has a valid scope definition."""
+        if self.ayah is not None and self.surah is None:
+            raise ValueError("ayah requires surah")
+
+        if self.text is None and self.surah is None:
+            raise ValueError("Either text or surah must be provided")
+
+        return self

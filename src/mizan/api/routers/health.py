@@ -3,8 +3,9 @@
 from datetime import datetime
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from mizan import __version__
 from mizan.api.dependencies import Cache, DbSession
@@ -15,6 +16,7 @@ router = APIRouter()
 logger = structlog.get_logger(__name__)
 
 
+@router.get("/api/v1/health", response_model=HealthResponse, include_in_schema=False)
 @router.get("/health", response_model=HealthResponse)
 async def health_check(
     session: DbSession,
@@ -29,7 +31,7 @@ async def health_check(
     db_healthy = True
     try:
         await session.execute(text("SELECT 1"))
-    except Exception:
+    except SQLAlchemyError:
         db_healthy = False
 
     # Check cache
