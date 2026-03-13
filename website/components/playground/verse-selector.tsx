@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 
 interface VerseSelectorProps {
-  surahs: Array<{
+  surahs?: Array<{
     number: number;
     name_arabic: string;
     name_english: string;
@@ -35,7 +35,7 @@ interface VerseSelectorProps {
  * Allows users to select a specific verse from the Quran.
  */
 export function VerseSelector({
-  surahs,
+  surahs = [],
   isLoadingSurahs = false,
   selectedSurah,
   selectedAyah,
