@@ -7,11 +7,11 @@ All external dependencies (primary/fallback providers) are replaced with AsyncMo
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from mizan.infrastructure.embeddings.cascade_service import CascadeEmbeddingService
-
 
 # ---------------------------------------------------------------------------
 # Helpers

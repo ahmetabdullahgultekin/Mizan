@@ -12,8 +12,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum as SAEnum,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -33,8 +31,8 @@ except ImportError:
     from sqlalchemy import JSON as Vector  # type: ignore[assignment]
     _PGVECTOR_AVAILABLE = False
 
+from mizan.domain.enums.library_enums import IndexingStatus
 from mizan.infrastructure.persistence.database import Base
-from mizan.domain.enums.library_enums import IndexingStatus, SourceType
 
 if TYPE_CHECKING:
     pass

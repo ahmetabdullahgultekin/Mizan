@@ -2,10 +2,10 @@
 Enumerations for the Islamic Knowledge Library system.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class SourceType(str, Enum):
+class SourceType(StrEnum):
     """Type of Islamic text source."""
 
     QURAN = "QURAN"
@@ -14,7 +14,7 @@ class SourceType(str, Enum):
     OTHER = "OTHER"
 
 
-class IndexingStatus(str, Enum):
+class IndexingStatus(StrEnum):
     """Status of the indexing/embedding process for a text source."""
 
     PENDING = "PENDING"
@@ -23,7 +23,7 @@ class IndexingStatus(str, Enum):
     FAILED = "FAILED"
 
 
-class EmbeddingProvider(str, Enum):
+class EmbeddingProvider(StrEnum):
     """Supported embedding providers."""
 
     LOCAL = "local"

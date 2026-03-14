@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     # API Configuration
     # ==========================================================================
-    api_host: str = Field(default="0.0.0.0")
+    api_host: str = Field(default="0.0.0.0")  # nosec B104 - intentional bind to all interfaces
     api_port: int = Field(default=8000, ge=1, le=65535)
     debug: bool = Field(default=False)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(

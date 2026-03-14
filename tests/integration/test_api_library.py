@@ -6,9 +6,6 @@ Verifies routing, auth enforcement, and input validation without a real DB.
 
 from __future__ import annotations
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # Auth tests — API key enforcement
 # ---------------------------------------------------------------------------

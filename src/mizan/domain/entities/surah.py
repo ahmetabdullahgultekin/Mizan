@@ -6,8 +6,9 @@ A Surah contains all verses and metadata for one of the 114 chapters.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mizan.domain.entities.verse import Verse
