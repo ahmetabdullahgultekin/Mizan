@@ -7,8 +7,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import AsyncIterator
 
+import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = structlog.get_logger(__name__)
 
 from mizan.domain.entities import Surah, Verse
 from mizan.domain.enums import (
@@ -72,7 +75,12 @@ class PostgresQuranRepository(IQuranRepository):
                         ScriptType(k): v for k, v in scripts.items()
                     }
                 except ValueError:
-                    pass
+                    logger.warning(
+                        "unknown_qiraat_variant",
+                        key=qiraat_key,
+                        surah=model.surah_number,
+                        verse=model.verse_number,
+                    )
 
         return Verse(
             id=model.id,

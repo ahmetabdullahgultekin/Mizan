@@ -170,6 +170,12 @@ class Settings(BaseSettings):
         default="development",
         description="Sentry environment tag (e.g. 'production', 'staging', 'development')",
     )
+    sentry_traces_sample_rate: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Sentry performance traces sample rate (0.0 to 1.0)",
+    )
 
     @field_validator("database_url")
     @classmethod

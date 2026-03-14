@@ -104,7 +104,7 @@ src/mizan/
 
 ## Active Branch
 
-Development branch: `claude/fix-email-display-rwMGK`
+Development branch: `claude/review-project-todos-OIgd9`
 
 ## Key API Endpoints
 

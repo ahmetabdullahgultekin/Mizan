@@ -4,7 +4,7 @@ Integrity Guard - Fail-fast data integrity verification.
 Ensures Quranic text has not been corrupted or modified.
 """
 
-import logging
+import structlog
 from datetime import datetime
 from typing import Final
 
@@ -13,7 +13,7 @@ from mizan.domain.repositories import IntegrityReport
 from mizan.domain.value_objects import TextChecksum, VerseLocation
 from mizan.infrastructure.config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class IntegrityGuard:
