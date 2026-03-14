@@ -267,7 +267,7 @@ let apiClientInstance: ApiClient | null = null;
 export function getApiClient(baseUrl?: string): ApiClient {
   if (!apiClientInstance) {
     apiClientInstance = new ApiClient(
-      baseUrl || process.env.NEXT_PUBLIC_API_URL || 'https://api.mizan.app'
+      baseUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
     );
   }
   return apiClientInstance;

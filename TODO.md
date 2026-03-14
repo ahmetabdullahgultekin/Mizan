@@ -50,29 +50,29 @@
 - [ ] Update GitHub Actions `NEXT_PUBLIC_API_URL` to Railway URL
 - [ ] Enable GitHub Pages for frontend (Settings → Pages → GitHub Actions)
 - [ ] Set `SECRET_KEY` to a strong random value in Railway
-- [ ] Add `slowapi` rate limiting (semantic search: 30 req/min/IP)
+- [x] Add `slowapi` rate limiting — implemented in `src/mizan/api/limiters.py` + `main.py`
 - [ ] Review CORS settings for production domain
-- [ ] Set up error tracking (Sentry)
+- [x] Set up error tracking (Sentry) — implemented in `src/mizan/infrastructure/config.py` + `main.py`
 
 ---
 
 ## Priority 5: Feature Completion
 
 ### Coming Soon Pages
-- [ ] `/docs/api` - Full API documentation
-- [ ] `/docs/examples` - Code examples
-- [ ] `/docs/changelog` - Version history
-- [ ] `/docs/contributing` - Contribution guide
-- [ ] `/privacy` - Privacy policy
-- [ ] `/terms` - Terms of service
-- [ ] `/license` - License details
+- [x] `/docs/api` - Full API documentation
+- [x] `/docs/examples` - Code examples
+- [x] `/docs/changelog` - Version history
+- [x] `/docs/contributing` - Contribution guide
+- [x] `/privacy` - Privacy policy
+- [x] `/terms` - Terms of service
+- [x] `/license` - License details
 
 ### Future Features
 - [ ] Word-by-word morphology endpoint (MASAQ dataset)
 - [ ] Kavramsal harita / Graph view (ayet → benzer ayetler → tefsir → hadis)
 - [ ] Comparative translation analysis (multiple meals side-by-side)
 - [ ] Thematic tagging via embedding clustering
-- [ ] API key authentication for admin endpoints
+- [x] API key authentication for admin endpoints — implemented in `config.py` (`api_key` field)
 
 ---
 
@@ -132,4 +132,4 @@ GEMINI_API_KEY=your-key-here
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-14*
