@@ -1,7 +1,5 @@
 """Domain Entities - Core aggregate roots with identity."""
 
-from mizan.domain.entities.surah import Surah
-from mizan.domain.entities.verse import Verse
 from mizan.domain.entities.library import (
     LibrarySpace,
     SemanticSearchResult,
@@ -9,6 +7,8 @@ from mizan.domain.entities.library import (
     TextSource,
     VerseEmbedding,
 )
+from mizan.domain.entities.surah import Surah
+from mizan.domain.entities.verse import Verse
 
 __all__ = [
     "Surah",

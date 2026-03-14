@@ -12,7 +12,6 @@ generous Gemini API Studio free tier.
 from __future__ import annotations
 
 import asyncio
-from functools import lru_cache
 
 from mizan.domain.services.embedding_service import IEmbeddingService
 

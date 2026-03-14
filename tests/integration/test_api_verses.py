@@ -7,9 +7,7 @@ The database calls are intercepted via FastAPI dependency overrides.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
-
+from unittest.mock import AsyncMock, patch
 
 # ---------------------------------------------------------------------------
 # /api/v1/surahs

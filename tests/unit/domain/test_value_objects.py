@@ -1,8 +1,9 @@
 """Unit tests for domain value objects."""
 
 import pytest
-from mizan.domain.value_objects import VerseLocation, TextChecksum, AbjadValue, SurahMetadata
+
 from mizan.domain.enums import AbjadSystem, BasmalahStatus, RevelationType
+from mizan.domain.value_objects import AbjadValue, SurahMetadata, TextChecksum, VerseLocation
 
 
 class TestVerseLocation:

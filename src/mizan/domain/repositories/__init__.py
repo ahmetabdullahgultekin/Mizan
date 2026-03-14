@@ -1,8 +1,8 @@
 """Repository Interfaces (Ports) - Abstractions for data access."""
 
 from mizan.domain.repositories.interfaces import (
-    IntegrityReport,
     IMorphologyRepository,
+    IntegrityReport,
     IQuranRepository,
     ISurahMetadataRepository,
     MorphologyData,

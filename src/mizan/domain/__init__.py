@@ -31,9 +31,9 @@ from mizan.domain.exceptions import (
 )
 from mizan.domain.repositories import (
     IMorphologyRepository,
+    IntegrityReport,
     IQuranRepository,
     ISurahMetadataRepository,
-    IntegrityReport,
 )
 from mizan.domain.services import (
     AbjadCalculator,

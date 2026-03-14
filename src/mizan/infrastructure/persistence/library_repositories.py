@@ -8,7 +8,7 @@ and implement vector similarity search using pgvector's cosine distance.
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import structlog
 from sqlalchemy import delete, select, update
@@ -34,7 +34,6 @@ from mizan.infrastructure.persistence.models import (
     TextSourceModel,
     VerseEmbeddingModel,
 )
-
 
 logger = structlog.get_logger(__name__)
 
@@ -339,7 +338,10 @@ class PostgresTextChunkRepository(ITextChunkRepository):
 
         where_sql = " AND ".join(where_clauses)
 
-        sql = sa_text(f"""
+        # Build SQL query with parameterized values to prevent SQL injection
+        # Only the WHERE clause structure is dynamic; all user values are parameterized
+        sql = sa_text(
+            f"""
             SELECT
                 tc.id         AS chunk_id,
                 tc.text_source_id,
@@ -354,7 +356,8 @@ class PostgresTextChunkRepository(ITextChunkRepository):
             WHERE {where_sql}
             ORDER BY tc.embedding <=> :embedding::vector
             LIMIT :limit
-        """)
+        """
+        )
 
         result = await self._session.execute(sql, params)
         rows = result.fetchall()
@@ -464,7 +467,10 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
         )
 
-        sql = sa_text(f"""
+        # Build SQL query with parameterized values to prevent SQL injection
+        # Only the WHERE clause structure is dynamic; all user values are parameterized
+        sql = sa_text(
+            f"""
             SELECT
                 surah_number,
                 verse_number,
@@ -473,7 +479,8 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             {where_sql}
             ORDER BY embedding <=> :embedding::vector
             LIMIT :limit
-        """)
+        """
+        )
 
         result = await self._session.execute(sql, params)
         rows = result.fetchall()

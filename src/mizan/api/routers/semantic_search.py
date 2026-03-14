@@ -6,8 +6,6 @@ Search across Islamic texts by meaning, not just keywords.
 
 from __future__ import annotations
 
-from uuid import UUID
-
 import structlog
 from fastapi import APIRouter, HTTPException, Request
 

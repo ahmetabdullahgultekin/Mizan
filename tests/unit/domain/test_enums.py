@@ -1,6 +1,5 @@
 """Unit tests for domain enumerations."""
 
-import pytest
 from mizan.domain.enums import (
     AbjadSystem,
     AnalysisType,

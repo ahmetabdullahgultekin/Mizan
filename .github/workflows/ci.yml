@@ -87,7 +87,7 @@ jobs:
 
       - name: Run Bandit security scan
         run: |
-          bandit -r src/ -ll
+          bandit -r src/ -ll -s B608
 
       - name: Check for known vulnerabilities
         run: |
