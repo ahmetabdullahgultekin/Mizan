@@ -32,7 +32,7 @@
 - [ ] Add Sahih International translation (Quran English) as a TextSource
 - [ ] Add sample Tafsir passages (e.g. Ibn Kathir excerpts) as a TextSource
 - [ ] Add sample Hadith collection (e.g. Riyazüssalihin) as a TextSource
-- [ ] Create `scripts/ingest_library_source.py` for batch text file ingestion
+- [x] Create `scripts/ingest_library_source.py` for batch text file ingestion
 
 ---
 

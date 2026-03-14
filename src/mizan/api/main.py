@@ -41,7 +41,7 @@ def _init_sentry() -> None:
             dsn=settings.sentry_dsn,
             environment=settings.sentry_environment,
             release=__version__,
-            traces_sample_rate=0.1,
+            traces_sample_rate=settings.sentry_traces_sample_rate,
             send_default_pii=False,
         )
         logger.info("sentry_initialised", environment=settings.sentry_environment)
@@ -69,7 +69,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await init_db()
 
     # Initialize cache
-    _init_sentry()
     await get_cache()
 
     logger.info("Mizan API started", version=__version__, env=settings.log_level)

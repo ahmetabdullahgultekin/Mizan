@@ -25,13 +25,22 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+import warnings
+
 try:
     from pgvector.sqlalchemy import Vector
     _PGVECTOR_AVAILABLE = True
 except ImportError:
-    # Graceful fallback: store as JSON if pgvector not installed yet
+    # Fallback: store as JSON if pgvector not installed — vector search will NOT work
     from sqlalchemy import JSON as Vector  # type: ignore[assignment]
     _PGVECTOR_AVAILABLE = False
+    warnings.warn(
+        "pgvector is not installed. Embedding columns will use JSON storage "
+        "and vector similarity search will be unavailable. "
+        "Install pgvector: pip install pgvector",
+        ImportWarning,
+        stacklevel=1,
+    )
 
 from mizan.infrastructure.persistence.database import Base
 from mizan.domain.enums.library_enums import IndexingStatus, SourceType

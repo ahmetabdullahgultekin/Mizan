@@ -111,8 +111,6 @@ ml = [
     "transformers>=4.36.0",
     "torch>=2.1.0",
     "sentence-transformers>=2.2.0",
-    "gensim>=4.3.0",
-    "networkx>=3.2.0",
     "numpy>=1.26.0",
     "scipy>=1.11.0",
     # Vector database support

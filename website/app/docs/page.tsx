@@ -67,7 +67,7 @@ export default function DocsPage() {
             </p>
             <CodeBlock
               language="bash"
-              code={`curl -X POST https://api.mizan.app/api/v1/analyze \\
+              code={`curl -X POST http://localhost:8000/api/v1/analysis/abjad \\
   -H "Content-Type: application/json" \\
   -d '{"text": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"}'`}
             />
