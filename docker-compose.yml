@@ -17,6 +17,14 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     command: >
       uvicorn mizan.api.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
@@ -37,6 +45,14 @@ services:
       - NODE_ENV=production
     depends_on:
       - api
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
     networks:
       - mizan-network
 
@@ -51,6 +67,14 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-mizan}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mizan} -d ${POSTGRES_DB:-mizan}"]
       interval: 5s
@@ -67,6 +91,14 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
