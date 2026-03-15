@@ -132,7 +132,7 @@ function ResultCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'glass-card relative overflow-hidden rounded-xl p-5',
+        'glass-card relative rounded-xl p-5',
         'border transition-colors',
         color === 'gold'
           ? 'border-gold-500/20 hover:border-gold-500/40'

@@ -111,7 +111,7 @@ export default function PlaygroundPage() {
     setIsFindingSimilar(true);
     setSimilarVerses([]);
     try {
-      const verses = await getApiClient().findSimilarVerses(selectedSurah, selectedAyah, 5);
+      const verses = await getApiClient().findSimilarVerses(selectedSurah, selectedAyah, 10);
       setSimilarVerses(verses);
     } catch (err) {
       setError(
