@@ -24,7 +24,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
 | Morphology (MASAQ) | ❌ Not started | Future phase |
 | Library sources (Tafsir/Hadith) | ❌ Not ingested | text_chunks table empty until sources are added |
-| Website i18n (TR/AR) | ❌ Planned | Phase 7 — next-intl |
+| Website i18n (TR/AR) | ✅ Complete | Client-side: en/tr/ar + RTL + language switcher |
 
 ## Startup Sequence (Full Stack)
 

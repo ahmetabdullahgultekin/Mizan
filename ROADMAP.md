@@ -30,7 +30,7 @@
 
 ### Website Features
 
-- [ ] i18n support: Turkish and Arabic UI translations (next-intl)
+- [x] i18n support: Turkish and Arabic UI translations (client-side, en/tr/ar + RTL)
 - [ ] Multi-verse playground: surah dropdown + verse multi-select
 - [ ] Fix remaining TypeScript build errors properly
 
@@ -45,7 +45,7 @@
 
 - [ ] Sentry error tracking
 - [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Automated database backups (pg_dump)
+- [x] Automated database backups (pg_dump — daily cron at 3 AM)
 
 ---
 
