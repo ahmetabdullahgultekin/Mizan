@@ -221,7 +221,7 @@ function LetterBreakdownChart({ breakdown }: { breakdown: LetterBreakdown[] }) {
 
             {/* Percentage */}
             <span className="w-12 text-right text-xs text-muted-foreground">
-              {item.percentage.toFixed(1)}%
+              {(item.percentage ?? 0).toFixed(1)}%
             </span>
           </motion.div>
         ))}
