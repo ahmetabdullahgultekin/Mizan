@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useI18n } from '@/lib/i18n';
 import type { AnalysisResponse, LetterBreakdown } from '@/types/api';
 
 interface AnalysisResultsProps {
@@ -27,6 +28,7 @@ interface AnalysisResultsProps {
  * Displays the results of text analysis with animated counters.
  */
 export function AnalysisResults({ result, isLoading, className }: AnalysisResultsProps) {
+  const { t } = useI18n();
   return (
     <div className={cn('space-y-6', className)}>
       {/* Analyzed Text Display */}
@@ -56,7 +58,7 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
       <div className="grid gap-4 md:grid-cols-3">
         <ResultCard
           icon={<Hash className="h-5 w-5" />}
-          label="Letters"
+          label={t('playground.letters')}
           value={result?.letter_count || 0}
           method={result?.letter_method || 'traditional'}
           methodLabel={getMethodLabel(result?.letter_method)}
@@ -68,7 +70,7 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
 
         <ResultCard
           icon={<Type className="h-5 w-5" />}
-          label="Words"
+          label={t('playground.words')}
           value={result?.word_count || 0}
           method="tanzil"
           methodLabel="Tanzil Standard"
@@ -80,7 +82,7 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
 
         <ResultCard
           icon={<Calculator className="h-5 w-5" />}
-          label="Abjad Value"
+          label={t('playground.abjadValue')}
           value={result?.abjad_value || 0}
           method={result?.abjad_system || 'mashriqi'}
           methodLabel={getSystemLabel(result?.abjad_system)}
@@ -199,6 +201,7 @@ function ResultCard({
  * Letter Breakdown Chart
  */
 function LetterBreakdownChart({ breakdown }: { breakdown: LetterBreakdown[] }) {
+  const { t } = useI18n();
   // Sort by count descending and take top 10
   const topLetters = [...breakdown]
     .sort((a, b) => b.count - a.count)
@@ -213,7 +216,7 @@ function LetterBreakdownChart({ breakdown }: { breakdown: LetterBreakdown[] }) {
       transition={{ delay: 0.3 }}
       className="glass-card rounded-xl p-5"
     >
-      <h4 className="mb-4 text-sm font-medium text-muted-foreground">Letter Distribution</h4>
+      <h4 className="mb-4 text-sm font-medium text-muted-foreground">{t('playground.letterDistribution')}</h4>
 
       <div className="space-y-3">
         {topLetters.map((item, index) => (

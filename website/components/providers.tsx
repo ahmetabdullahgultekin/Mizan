@@ -6,6 +6,7 @@ import { type ThemeProviderProps } from 'next-themes/dist/types';
 import { Toaster } from 'sonner';
 
 import { ApiProvider } from '@/lib/api/provider';
+import { I18nProvider } from '@/lib/i18n';
 import { siteConfig } from '@/config/site';
 
 interface ProvidersProps {
@@ -22,6 +23,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
       disableTransitionOnChange
       {...themeProps}
     >
+      <I18nProvider>
       <ApiProvider baseUrl={siteConfig.api.baseUrl}>
         {children}
         <Toaster
@@ -32,6 +34,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
           }}
         />
       </ApiProvider>
+      </I18nProvider>
     </NextThemesProvider>
   );
 }
