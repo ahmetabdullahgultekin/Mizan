@@ -143,7 +143,7 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         result = await self._session.execute(
             delete(LibrarySpaceModel).where(LibrarySpaceModel.id == space_id)
         )
-        found = bool(result.rowcount and result.rowcount > 0)  # type: ignore[union-attr]
+        found = bool(result.rowcount and result.rowcount > 0)  # type: ignore[attr-defined]
         logger.info("library_space_deleted", space_id=str(space_id), found=found)
         return found
 
@@ -233,7 +233,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         result = await self._session.execute(
             delete(TextSourceModel).where(TextSourceModel.id == source_id)
         )
-        return bool(result.rowcount and result.rowcount > 0)  # type: ignore[union-attr]
+        return bool(result.rowcount and result.rowcount > 0)  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +380,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
                 TextChunkModel.text_source_id == source_id
             )
         )
-        return int(result.rowcount or 0)  # type: ignore[union-attr]
+        return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
