@@ -334,7 +334,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
             # cosine distance = 1 - similarity, so distance < 1 - min_sim
             max_distance = 1.0 - min_similarity
             where_clauses.append(
-                f"(tc.embedding <=> :embedding::vector) < {max_distance}"
+                f"(tc.embedding <=> CAST(:embedding AS vector)) < {max_distance}"
             )
 
         where_sql = " AND ".join(where_clauses)
@@ -347,12 +347,12 @@ class PostgresTextChunkRepository(ITextChunkRepository):
                 ts.source_type,
                 tc.reference,
                 tc.content,
-                (1 - (tc.embedding <=> :embedding::vector)) AS similarity_score,
+                (1 - (tc.embedding <=> CAST(:embedding AS vector))) AS similarity_score,
                 tc.metadata
             FROM text_chunks tc
             JOIN text_sources ts ON tc.text_source_id = ts.id
             WHERE {where_sql}
-            ORDER BY tc.embedding <=> :embedding::vector
+            ORDER BY tc.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 
@@ -468,10 +468,10 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             SELECT
                 surah_number,
                 verse_number,
-                (1 - (embedding <=> :embedding::vector)) AS similarity_score
+                (1 - (embedding <=> CAST(:embedding AS vector))) AS similarity_score
             FROM verse_embeddings
             {where_sql}
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
         """)
 

@@ -230,16 +230,15 @@ async def analyze_verse(
     All sub-analyses run in parallel for optimal performance.
     """
     try:
-        letter_result, word_result, abjad_result, frequency_result = await asyncio.gather(
-            analyzer.count_letters(surah_number=surah, verse_number=verse),
-            analyzer.count_words(surah_number=surah, verse_number=verse),
-            analyzer.calculate_abjad(
-                surah_number=surah,
-                verse_number=verse,
-                include_breakdown=True,
-            ),
-            analyzer.get_letter_frequency(surah_number=surah, verse_number=verse),
+        # Run sequentially — async session cannot handle concurrent operations
+        letter_result = await analyzer.count_letters(surah_number=surah, verse_number=verse)
+        word_result = await analyzer.count_words(surah_number=surah, verse_number=verse)
+        abjad_result = await analyzer.calculate_abjad(
+            surah_number=surah,
+            verse_number=verse,
+            include_breakdown=True,
         )
+        frequency_result = await analyzer.get_letter_frequency(surah_number=surah, verse_number=verse)
 
         abjad_breakdown = None
         if abjad_result.get("breakdown"):

@@ -170,6 +170,21 @@ def create_app() -> FastAPI:
         return response
 
     # ---------------------------------------------------------------------------
+    # Catch-all exception handler (ensures CORS headers on 500 errors)
+    # ---------------------------------------------------------------------------
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
+        """Catch unhandled exceptions so CORS headers are always present."""
+        logger.error("unhandled_exception", error=str(exc), type=type(exc).__name__)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
+
+    # ---------------------------------------------------------------------------
     # Centralized domain exception handler
     # ---------------------------------------------------------------------------
 
