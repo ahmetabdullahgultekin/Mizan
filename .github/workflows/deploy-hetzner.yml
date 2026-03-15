@@ -25,10 +25,12 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        timeout-minutes: 10
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 8m
           script: |
             set -e
             cd /root/projects/Mizan
@@ -36,8 +38,15 @@ jobs:
             cd /root/projects
             ./infra/deploy.sh build mizan
             ./infra/deploy.sh restart mizan
-            # Health check
-            sleep 10
-            curl -sf https://mizan-api.rollingcatsoftware.com/health || exit 1
+            # Health check with retries (API loads ML model on startup)
+            for i in 1 2 3 4 5 6; do
+              sleep 15
+              if curl -sf https://mizan-api.rollingcatsoftware.com/health > /dev/null 2>&1; then
+                echo "API healthy after attempt $i"
+                break
+              fi
+              echo "Attempt $i: API not ready yet..."
+              if [ "$i" = "6" ]; then echo "Health check failed after 90s" && exit 1; fi
+            done
             curl -sf -o /dev/null https://mizan.rollingcatsoftware.com || exit 1
             echo "Mizan deployed successfully"

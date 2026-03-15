@@ -21,6 +21,7 @@ from mizan import __version__
 from mizan.api.limiters import limiter
 from mizan.api.routers import analysis, health, verses
 from mizan.api.routers.library import router as library_router
+from mizan.api.routers.morphology import router as morphology_router
 from mizan.api.routers.semantic_search import router as semantic_search_router
 from mizan.domain.exceptions import DomainException
 from mizan.infrastructure.cache.redis_cache import close_cache, get_cache
@@ -240,6 +241,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["Health"])
     app.include_router(verses.router, prefix="/api/v1", tags=["Verses"])
     app.include_router(analysis.router, prefix="/api/v1", tags=["Analysis"])
+    app.include_router(morphology_router, prefix="/api/v1", tags=["Morphology"])
 
     if settings.enable_semantic_analysis:
         app.include_router(library_router, prefix="/api/v1", tags=["Library"])
