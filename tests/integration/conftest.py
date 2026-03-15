@@ -53,7 +53,7 @@ async def _mock_cache_dep() -> RedisCache:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def app():
     """FastAPI app with dependency overrides for testing."""
     application = create_app()
@@ -63,14 +63,14 @@ def app():
     application.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def client(app):
     """Synchronous test client."""
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def async_client(app):
     """Async HTTPX test client."""
     async with AsyncClient(
