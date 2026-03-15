@@ -371,7 +371,7 @@ class TextChunkModel(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(768), nullable=True
     )
-    metadata_: Mapped[dict] = mapped_column(
+    metadata_: Mapped[dict[str, object]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict
     )
     created_at: Mapped[datetime] = mapped_column(

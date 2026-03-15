@@ -107,7 +107,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
 
     # Rate limit exceeded → 429
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     # Sentry ASGI middleware — only added when sentry_sdk is installed and DSN is set
     if settings.sentry_dsn:
