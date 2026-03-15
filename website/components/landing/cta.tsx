@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SpotlightButton } from '@/components/animated/spotlight';
 import { ArabicTextGenerate } from '@/components/animated/text-generate';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * CTA (Call to Action) Section
@@ -16,6 +17,8 @@ import { ArabicTextGenerate } from '@/components/animated/text-generate';
  * Final section encouraging users to try the playground or contribute.
  */
 export function CTA() {
+  const { t } = useI18n();
+
   return (
     <section className="relative py-24">
       {/* Background */}
@@ -45,27 +48,26 @@ export function CTA() {
               وَرَتِّلِ الْقُرْآنَ تَرْتِيلًا
             </p>
             <p className="mt-2 text-sm text-muted-foreground italic">
-              "And recite the Quran with measured recitation." - Al-Muzzammil 73:4
+              {t('cta.quoteTranslation')}
             </p>
           </motion.div>
 
           {/* Main CTA */}
           <h2 className="mb-6 text-3xl font-bold md:text-4xl lg:text-5xl">
-            Ready to{' '}
-            <span className="text-gradient-gold">Explore</span>
+            {t('cta.title')}{' '}
+            <span className="text-gradient-gold">{t('cta.titleHighlight')}</span>
             ?
           </h2>
 
           <p className="mb-8 text-lg text-muted-foreground">
-            Start analyzing Quranic text with precision and scholarly accuracy.
-            Free and open source for the entire Ummah.
+            {t('cta.description')}
           </p>
 
           {/* Buttons */}
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <SpotlightButton className="group px-8 py-4 text-base">
               <Link href="/playground" className="flex items-center">
-                Open Playground
+                {t('cta.openPlayground')}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </SpotlightButton>
@@ -77,14 +79,14 @@ export function CTA() {
                 rel="noopener noreferrer"
               >
                 <Github className="mr-2 h-4 w-4" />
-                Star on GitHub
+                {t('cta.starGithub')}
               </a>
             </Button>
 
             <Button variant="ghost" size="lg" asChild>
               <Link href="/docs">
                 <BookOpen className="mr-2 h-4 w-4" />
-                Read Docs
+                {t('cta.readDocs')}
               </Link>
             </Button>
           </div>
@@ -99,17 +101,17 @@ export function CTA() {
           >
             <div className="flex items-center">
               <span className="mr-2 font-semibold text-foreground">MIT</span>
-              Licensed
+              {t('cta.mitLicensed')}
             </div>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center">
               <span className="mr-2 font-semibold text-foreground">100%</span>
-              Open Source
+              {t('cta.openSource')}
             </div>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center">
-              <span className="mr-2 font-semibold text-foreground">Scholarly</span>
-              Verified
+              <span className="mr-2 font-semibold text-foreground">{t('cta.scholarly')}</span>
+              {t('cta.verified')}
             </div>
           </motion.div>
         </motion.div>

@@ -7,6 +7,7 @@ import { BookOpen, Hash, Calculator, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatedCounterCard } from '@/components/animated/animated-counter';
 import { staggerContainer } from '@/lib/animations/variants';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Stats Section
@@ -14,6 +15,8 @@ import { staggerContainer } from '@/lib/animations/variants';
  * Displays key statistics about the Quran and Mizan's capabilities.
  */
 export function Stats() {
+  const { t } = useI18n();
+
   return (
     <section className="relative py-24">
       {/* Background gradient */}
@@ -29,11 +32,11 @@ export function Stats() {
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-            By The{' '}
-            <span className="text-gradient-gold">Numbers</span>
+            {t('stats.title')}{' '}
+            <span className="text-gradient-gold">{t('stats.titleHighlight')}</span>
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Comprehensive coverage of the Holy Quran with verified accuracy.
+            {t('stats.description')}
           </p>
         </motion.div>
 
@@ -47,16 +50,16 @@ export function Stats() {
         >
           <AnimatedCounterCard
             value={114}
-            label="Surahs"
-            description="Complete coverage"
+            label={t('stats.surahs')}
+            description={t('stats.surahsDesc')}
             icon={<BookOpen className="h-8 w-8" />}
             duration={2}
           />
 
           <AnimatedCounterCard
             value={6236}
-            label="Verses"
-            description="All verses indexed"
+            label={t('stats.verses')}
+            description={t('stats.versesDesc')}
             icon={<Hash className="h-8 w-8" />}
             duration={2.5}
             delay={0.1}
@@ -64,8 +67,8 @@ export function Stats() {
 
           <AnimatedCounterCard
             value={77430}
-            label="Words"
-            description="Tanzil standard"
+            label={t('stats.words')}
+            description={t('stats.wordsDesc')}
             icon={<Calculator className="h-8 w-8" />}
             duration={3}
             delay={0.2}
@@ -73,8 +76,8 @@ export function Stats() {
 
           <AnimatedCounterCard
             value={138}
-            label="Tests Passing"
-            description="Quality assured"
+            label={t('stats.testsPassing')}
+            description={t('stats.testsDesc')}
             icon={<CheckCircle className="h-8 w-8" />}
             duration={2}
             delay={0.3}
@@ -92,7 +95,7 @@ export function Stats() {
           <div className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-6 py-3">
             <CheckCircle className="mr-2 h-5 w-5 text-emerald-500" />
             <span className="text-sm font-medium text-emerald-500">
-              Verified against Tanzil.net & scholarly standards
+              {t('stats.verifiedBadge')}
             </span>
           </div>
         </motion.div>

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AnimatedCounter } from '@/components/animated/animated-counter';
 import { Spotlight } from '@/components/animated/spotlight';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Demo Preview Section
@@ -17,6 +18,7 @@ import { Spotlight } from '@/components/animated/spotlight';
  * Shows a preview of the playground with the Basmalah analysis.
  */
 export function DemoPreview() {
+  const { t } = useI18n();
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [showResults, setShowResults] = React.useState(false);
 
@@ -43,14 +45,14 @@ export function DemoPreview() {
         >
           <Badge variant="emerald" className="mb-4">
             <Sparkles className="mr-2 h-3 w-3" />
-            Live Demo
+            {t('demo.badge')}
           </Badge>
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-            See It In{' '}
-            <span className="text-gradient-emerald">Action</span>
+            {t('demo.title')}{' '}
+            <span className="text-gradient-emerald">{t('demo.titleHighlight')}</span>
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Try the analysis engine with the Basmalah - the most analyzed phrase in Islamic tradition.
+            {t('demo.description')}
           </p>
         </motion.div>
 
@@ -67,7 +69,7 @@ export function DemoPreview() {
               {/* Input Section */}
               <div className="mb-6">
                 <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                  Arabic Text
+                  {t('demo.arabicText')}
                 </label>
                 <div className="rounded-xl bg-background/50 p-4">
                   <p
@@ -98,10 +100,10 @@ export function DemoPreview() {
                       >
                         <Sparkles className="h-4 w-4" />
                       </motion.div>
-                      Analyzing...
+                      {t('demo.analyzing')}
                     </span>
                   ) : (
-                    'Analyze'
+                    t('demo.analyze')
                   )}
                 </Button>
               </div>
@@ -118,24 +120,24 @@ export function DemoPreview() {
               >
                 <div className="grid gap-4 md:grid-cols-3">
                   <ResultCard
-                    label="Letters"
+                    label={t('demo.letters')}
                     value={19}
-                    method="Traditional"
+                    method={t('demo.traditional')}
                     color="gold"
                     show={showResults}
                   />
                   <ResultCard
-                    label="Words"
+                    label={t('demo.words')}
                     value={4}
-                    method="Tanzil Standard"
+                    method={t('demo.tanzilStandard')}
                     color="emerald"
                     show={showResults}
                     delay={0.1}
                   />
                   <ResultCard
-                    label="Abjad Value"
+                    label={t('demo.abjadValue')}
                     value={786}
-                    method="Mashriqi"
+                    method={t('demo.mashriqi')}
                     color="gold"
                     show={showResults}
                     delay={0.2}
@@ -151,8 +153,7 @@ export function DemoPreview() {
                 >
                   <p className="text-sm text-gold-500">
                     <Sparkles className="mr-1 inline h-4 w-4" />
-                    The number 19 is significant in Quranic numerology, and 786 is universally
-                    recognized as the Abjad value of Basmalah.
+                    {t('demo.funFact')}
                   </p>
                 </motion.div>
               </motion.div>
@@ -161,7 +162,7 @@ export function DemoPreview() {
               <div className="mt-6 text-center">
                 <Button variant="outline" asChild>
                   <Link href="/playground">
-                    Open Full Playground
+                    {t('demo.openPlayground')}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
