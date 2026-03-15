@@ -32,7 +32,7 @@
 
 - [x] i18n support: Turkish and Arabic UI translations (client-side, en/tr/ar + RTL)
 - [ ] Multi-verse playground: surah dropdown + verse multi-select
-- [ ] Fix remaining TypeScript build errors properly
+- [x] Fix remaining TypeScript build errors (tsc --noEmit passes cleanly)
 
 ### Data & AI
 
