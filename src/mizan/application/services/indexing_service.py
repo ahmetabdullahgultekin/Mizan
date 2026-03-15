@@ -10,24 +10,24 @@ This improves retrieval quality significantly for Arabic and multilingual text.
 
 from __future__ import annotations
 
-import structlog
-from uuid import UUID, uuid4
 from datetime import datetime
+from uuid import UUID, uuid4
+
+import structlog
 
 from mizan.domain.entities.library import TextChunk, VerseEmbedding
 from mizan.domain.enums.library_enums import IndexingStatus, SourceType
+from mizan.domain.repositories.interfaces import IQuranRepository
 from mizan.domain.repositories.library_interfaces import (
     ITextChunkRepository,
     ITextSourceRepository,
     IVerseEmbeddingRepository,
 )
-from mizan.domain.repositories.interfaces import IQuranRepository
 from mizan.domain.services.embedding_service import IEmbeddingService
 from mizan.infrastructure.chunking.chunking_strategies import (
     ParagraphChunker,
     RawChunk,
     SlidingWindowChunker,
-    VerseChunker,
 )
 
 logger = structlog.get_logger(__name__)
@@ -128,7 +128,7 @@ class IndexingService:
 
                 updates = [
                     (chunk.id, emb)
-                    for chunk, emb in zip(batch, embeddings)
+                    for chunk, emb in zip(batch, embeddings, strict=True)
                 ]
                 await self._chunks.update_embeddings_batch(updates)
 
@@ -250,7 +250,7 @@ class QuranEmbeddingIndexer:
                     model_name=self._embedder.model_name,
                     created_at=datetime.utcnow(),
                 )
-                for v, emb in zip(batch, embeddings)
+                for v, emb in zip(batch, embeddings, strict=True)
             ]
 
             await self._verse_embs.upsert_batch(verse_embeddings)

@@ -8,7 +8,6 @@ to test routers without a real database or Redis instance.
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -16,10 +15,9 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mizan.api.main import create_app
 from mizan.api.dependencies import get_db_session, get_redis_cache
+from mizan.api.main import create_app
 from mizan.infrastructure.cache.redis_cache import RedisCache
-
 
 # ---------------------------------------------------------------------------
 # Mock session factory

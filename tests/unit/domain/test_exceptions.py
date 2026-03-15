@@ -1,24 +1,23 @@
 """Unit tests for domain exceptions."""
 
-import pytest
 from mizan.domain.exceptions import (
-    DomainException,
-    VerseNotFoundError,
-    InvalidVerseLocationError,
-    VerseRangeError,
-    SurahNotFoundError,
-    InvalidSurahNumberError,
-    IntegrityViolationError,
-    ChecksumMismatchError,
     AnalysisConfigurationError,
-    UnsupportedAnalysisError,
-    MorphologyDataNotFoundError,
-    InvalidRootError,
+    ChecksumMismatchError,
+    DataSourceUnavailableError,
+    DomainException,
     EntityNotFoundError,
     IngestionError,
-    DataSourceUnavailableError,
+    IntegrityViolationError,
+    InvalidRootError,
+    InvalidSurahNumberError,
+    InvalidVerseLocationError,
+    MorphologyDataNotFoundError,
+    SurahNotFoundError,
+    UnsupportedAnalysisError,
+    VerseNotFoundError,
+    VerseRangeError,
 )
-from mizan.domain.value_objects import VerseLocation, TextChecksum
+from mizan.domain.value_objects import TextChecksum, VerseLocation
 
 
 class TestDomainException:

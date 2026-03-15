@@ -1,7 +1,5 @@
 """Unit tests for domain services."""
 
-import pytest
-from mizan.domain.services import LetterCounter, AbjadCalculator, WordCounter
 from mizan.domain.enums import AbjadSystem
 
 

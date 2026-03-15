@@ -8,7 +8,7 @@ and implement vector similarity search using pgvector's cosine distance.
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import structlog
 from sqlalchemy import delete, select, update
@@ -34,7 +34,6 @@ from mizan.infrastructure.persistence.models import (
     TextSourceModel,
     VerseEmbeddingModel,
 )
-
 
 logger = structlog.get_logger(__name__)
 

@@ -5,6 +5,7 @@ These models map domain entities to database tables with pre-computed fields
 for performance optimization.
 """
 
+import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -12,8 +13,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum as SAEnum,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -24,8 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-import warnings
 
 try:
     from pgvector.sqlalchemy import Vector
@@ -42,8 +39,8 @@ except ImportError:
         stacklevel=1,
     )
 
+from mizan.domain.enums.library_enums import IndexingStatus
 from mizan.infrastructure.persistence.database import Base
-from mizan.domain.enums.library_enums import IndexingStatus, SourceType
 
 if TYPE_CHECKING:
     pass

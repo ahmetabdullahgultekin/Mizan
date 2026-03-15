@@ -4,14 +4,12 @@ PostgreSQL implementation of IQuranRepository.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import AsyncIterator
 
 import structlog
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = structlog.get_logger(__name__)
 
 from mizan.domain.entities import Surah, Verse
 from mizan.domain.enums import (
@@ -27,11 +25,13 @@ from mizan.domain.exceptions import (
     VerseRangeError,
 )
 from mizan.domain.repositories import (
-    IQuranRepository,
     IntegrityReport,
+    IQuranRepository,
 )
 from mizan.domain.value_objects import SurahMetadata, TextChecksum, VerseLocation
 from mizan.infrastructure.persistence.models import SurahModel, VerseModel
+
+logger = structlog.get_logger(__name__)
 
 
 class PostgresQuranRepository(IQuranRepository):

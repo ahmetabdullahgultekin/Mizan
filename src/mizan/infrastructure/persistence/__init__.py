@@ -7,9 +7,9 @@ from mizan.infrastructure.persistence.database import (
     init_db,
 )
 from mizan.infrastructure.persistence.models import (
+    MorphologyModel,
     SurahModel,
     VerseModel,
-    MorphologyModel,
 )
 
 __all__ = [

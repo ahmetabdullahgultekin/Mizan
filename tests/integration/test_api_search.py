@@ -6,7 +6,6 @@ Verifies routing, rate-limit registration, and input validation.
 
 from __future__ import annotations
 
-
 # ---------------------------------------------------------------------------
 # POST /api/v1/search/semantic
 # ---------------------------------------------------------------------------
