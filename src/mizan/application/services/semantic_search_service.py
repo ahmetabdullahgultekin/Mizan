@@ -50,31 +50,68 @@ class SemanticSearchService:
         min_similarity: float = 0.5,
     ) -> list[SemanticSearchResult]:
         """
-        Search the library for chunks semantically similar to the query.
+        Search across Islamic texts by semantic similarity.
+
+        When source_types includes QURAN (or no filter is specified), this
+        searches the pre-computed verse_embeddings table (6,236 Quran verses)
+        in addition to any library text_chunks, merging results by similarity.
 
         Args:
-            query: Natural language query (any language)
+            query: Natural language query (any language — Arabic, Turkish, English)
             library_space_id: Restrict search to a specific library space
             source_types: Filter by source types (QURAN, TAFSIR, etc.)
             limit: Maximum number of results (default 10, max 100)
             min_similarity: Minimum cosine similarity threshold (0.0–1.0)
 
         Returns:
-            Ranked list of matching chunks (highest similarity first)
+            Ranked list of matching passages (highest similarity first)
         """
         limit = min(limit, 100)
 
         # Embed the query
         query_embedding = await self._embedder.embed_text(QUERY_PREFIX + query)
 
-        # Search in library chunks
-        return await self._chunks.semantic_search(
-            query_embedding=query_embedding,
-            library_space_id=library_space_id,
-            source_types=source_types,
-            limit=limit,
-            min_similarity=min_similarity,
+        # Determine which sources to search
+        search_quran_verses = (
+            source_types is None  # No filter → search everything
+            or SourceType.QURAN in source_types
         )
+        # Filter out QURAN from library search (verse_embeddings handles it)
+        non_quran_types = (
+            [st for st in source_types if st != SourceType.QURAN]
+            if source_types is not None
+            else None
+        )
+        search_library = (
+            source_types is None
+            or bool(non_quran_types)
+        )
+
+        all_results: list[SemanticSearchResult] = []
+
+        # 1. Search verse_embeddings for Quran verses
+        if search_quran_verses:
+            verse_results = await self._verse_embs.search_by_text(
+                query_embedding=query_embedding,
+                limit=limit,
+                min_similarity=min_similarity,
+            )
+            all_results.extend(verse_results)
+
+        # 2. Search library text_chunks (for non-Quran sources, or all if no filter)
+        if search_library:
+            chunk_results = await self._chunks.semantic_search(
+                query_embedding=query_embedding,
+                library_space_id=library_space_id,
+                source_types=non_quran_types,
+                limit=limit,
+                min_similarity=min_similarity,
+            )
+            all_results.extend(chunk_results)
+
+        # Sort combined results by similarity (highest first) and trim to limit
+        all_results.sort(key=lambda r: r.similarity_score, reverse=True)
+        return all_results[:limit]
 
     async def find_similar_verses(
         self,

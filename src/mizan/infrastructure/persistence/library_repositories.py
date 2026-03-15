@@ -487,6 +487,70 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             for row in rows
         ]
 
+    async def search_by_text(
+        self,
+        query_embedding: list[float],
+        limit: int = 10,
+        min_similarity: float = 0.0,
+    ) -> list[SemanticSearchResult]:
+        """
+        Search verse embeddings by a free-text query embedding.
+
+        JOINs with the verses table to return actual verse content as
+        SemanticSearchResult objects for unified search results.
+        """
+        from sqlalchemy import text as sa_text
+
+        clean_embedding = [float(x) for x in query_embedding]
+        params: dict = {"embedding": str(clean_embedding), "limit": limit}
+
+        where_clauses = ["ve.embedding IS NOT NULL"]
+
+        if min_similarity > 0:
+            max_distance = 1.0 - min_similarity
+            where_clauses.append(
+                f"(ve.embedding <=> CAST(:embedding AS vector)) < {max_distance}"
+            )
+
+        where_sql = " AND ".join(where_clauses)
+
+        sql = sa_text(f"""
+            SELECT
+                ve.id            AS chunk_id,
+                ve.verse_id      AS text_source_id,
+                'القرآن الكريم'  AS source_title,
+                'QURAN'          AS source_type,
+                (ve.surah_number || ':' || ve.verse_number) AS reference,
+                v.text_uthmani   AS content,
+                (1 - (ve.embedding <=> CAST(:embedding AS vector))) AS similarity_score
+            FROM verse_embeddings ve
+            JOIN verses v ON v.surah_number = ve.surah_number
+                         AND v.verse_number = ve.verse_number
+            WHERE {where_sql}
+            ORDER BY ve.embedding <=> CAST(:embedding AS vector)
+            LIMIT :limit
+        """)
+
+        result = await self._session.execute(sql, params)
+        rows = result.fetchall()
+
+        return [
+            SemanticSearchResult(
+                chunk_id=row.chunk_id,
+                text_source_id=row.text_source_id,
+                source_title=row.source_title,
+                source_type=SourceType(row.source_type),
+                reference=row.reference,
+                content=row.content,
+                similarity_score=float(row.similarity_score),
+                metadata={
+                    "surah_number": int(row.reference.split(":")[0]),
+                    "verse_number": int(row.reference.split(":")[1]),
+                },
+            )
+            for row in rows
+        ]
+
     async def get_total_count(self, model_name: str | None = None) -> int:
         from sqlalchemy import func
 

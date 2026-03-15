@@ -194,6 +194,29 @@ class IVerseEmbeddingRepository(ABC):
         ...
 
     @abstractmethod
+    async def search_by_text(
+        self,
+        query_embedding: list[float],
+        limit: int = 10,
+        min_similarity: float = 0.0,
+    ) -> list[SemanticSearchResult]:
+        """
+        Search verse embeddings by a free-text query embedding.
+
+        JOINs with the verses table to return the actual verse content,
+        formatted as SemanticSearchResult for unified search results.
+
+        Args:
+            query_embedding: Embedding of the search query text
+            limit: Maximum number of results
+            min_similarity: Minimum cosine similarity threshold (0.0-1.0)
+
+        Returns:
+            Ranked list of results (highest similarity first)
+        """
+        ...
+
+    @abstractmethod
     async def get_total_count(self, model_name: str | None = None) -> int:
         """Get total number of verse embeddings, optionally filtered by model."""
         ...
