@@ -34,7 +34,7 @@
 - [x] Playground: Translate all remaining hard-coded English strings (verse selector, hero stats, tip cards)
 - [x] Playground: Similar verse cards show Arabic verse text, surah name, clickable navigation
 - [ ] Multi-verse playground: surah dropdown + verse multi-select
-- [ ] Landing page: Translate remaining hard-coded strings in features/stats/demo/CTA sections
+- [x] Landing page: Translate remaining hard-coded strings in features/stats/demo/CTA sections
 - [x] Fix remaining TypeScript build errors (tsc --noEmit passes cleanly)
 
 ### Data & AI
