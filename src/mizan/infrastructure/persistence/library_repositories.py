@@ -315,7 +315,9 @@ class PostgresTextChunkRepository(ITextChunkRepository):
 
         # Build the base query with cosine distance
         # 1 - (embedding <=> query) gives cosine similarity
-        params: dict = {"embedding": str(query_embedding), "limit": limit}
+        # Convert numpy floats to plain Python floats for pgvector
+        clean_embedding = [float(x) for x in query_embedding]
+        params: dict = {"embedding": str(clean_embedding), "limit": limit}
 
         where_clauses = ["tc.embedding IS NOT NULL"]
 
@@ -451,7 +453,9 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         from sqlalchemy import text as sa_text
 
         where_clauses = []
-        params: dict = {"embedding": str(query_embedding), "limit": limit}
+        # Convert numpy floats to plain Python floats for pgvector
+        clean_embedding = [float(x) for x in query_embedding]
+        params: dict = {"embedding": str(clean_embedding), "limit": limit}
 
         if exclude_surah is not None and exclude_verse is not None:
             where_clauses.append(
