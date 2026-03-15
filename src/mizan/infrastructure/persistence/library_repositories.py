@@ -143,7 +143,7 @@ class PostgresLibrarySpaceRepository(ILibrarySpaceRepository):
         result = await self._session.execute(
             delete(LibrarySpaceModel).where(LibrarySpaceModel.id == space_id)
         )
-        found = result.rowcount > 0
+        found = bool(result.rowcount and result.rowcount > 0)
         logger.info("library_space_deleted", space_id=str(space_id), found=found)
         return found
 
@@ -159,7 +159,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def create(self, source: TextSource) -> TextSource:  # type: ignore[override]
+    async def create(self, source: TextSource) -> TextSource:
         logger.info("text_source_creating", source_id=str(source.id), source_type=source.source_type.value)
         model = TextSourceModel(
             id=source.id,
@@ -210,7 +210,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         total_chunks: int | None = None,
         embedding_model: str | None = None,
     ) -> TextSource | None:
-        values: dict = {
+        values: dict[str, object] = {
             "status": status.value,
             "updated_at": datetime.utcnow(),
         }
@@ -233,7 +233,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         result = await self._session.execute(
             delete(TextSourceModel).where(TextSourceModel.id == source_id)
         )
-        return result.rowcount > 0
+        return bool(result.rowcount and result.rowcount > 0)
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +316,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
         # 1 - (embedding <=> query) gives cosine similarity
         # Convert numpy floats to plain Python floats for pgvector
         clean_embedding = [float(x) for x in query_embedding]
-        params: dict = {"embedding": str(clean_embedding), "limit": limit}
+        params: dict[str, object] = {"embedding": str(clean_embedding), "limit": limit}
 
         where_clauses = ["tc.embedding IS NOT NULL"]
 
@@ -380,7 +380,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
                 TextChunkModel.text_source_id == source_id
             )
         )
-        return result.rowcount
+        return int(result.rowcount or 0)
 
 
 # ---------------------------------------------------------------------------
@@ -454,7 +454,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         where_clauses = []
         # Convert numpy floats to plain Python floats for pgvector
         clean_embedding = [float(x) for x in query_embedding]
-        params: dict = {"embedding": str(clean_embedding), "limit": limit}
+        params: dict[str, object] = {"embedding": str(clean_embedding), "limit": limit}
 
         if exclude_surah is not None and exclude_verse is not None:
             where_clauses.append(
@@ -501,7 +501,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         from sqlalchemy import text as sa_text
 
         clean_embedding = [float(x) for x in query_embedding]
-        params: dict = {"embedding": str(clean_embedding), "limit": limit}
+        params: dict[str, object] = {"embedding": str(clean_embedding), "limit": limit}
 
         where_clauses = ["ve.embedding IS NOT NULL"]
 
@@ -557,7 +557,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         if model_name:
             stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
         result = await self._session.execute(stmt)
-        return result.scalar_one()
+        return int(result.scalar_one())
 
     async def get_embedded_verse_keys(
         self, model_name: str | None = None

@@ -37,7 +37,7 @@ class RedisCache:
             encoding="utf-8",
             decode_responses=True,
             max_connections=settings.redis_pool_size,
-        )  # type: ignore[no-untyped-call]
+        )
         return cls(client)
 
     async def close(self) -> None:

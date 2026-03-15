@@ -29,7 +29,7 @@ try:
     _PGVECTOR_AVAILABLE = True
 except ImportError:
     # Fallback: store as JSON if pgvector not installed — vector search will NOT work
-    from sqlalchemy import JSON as Vector  # type: ignore[assignment]
+    from sqlalchemy import JSON as Vector
     _PGVECTOR_AVAILABLE = False
     warnings.warn(
         "pgvector is not installed. Embedding columns will use JSON storage "

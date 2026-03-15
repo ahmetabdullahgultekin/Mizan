@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from mizan.domain.enums.library_enums import IndexingStatus, SourceType
@@ -149,7 +150,7 @@ class TextChunk:
     content: str
     reference: str
     embedding: list[float] | None
-    metadata: dict
+    metadata: dict[str, Any]
     created_at: datetime
 
     @classmethod
@@ -159,7 +160,7 @@ class TextChunk:
         chunk_index: int,
         content: str,
         reference: str,
-        metadata: dict | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> TextChunk:
         """Create a new text chunk without an embedding yet."""
         return cls(
@@ -229,4 +230,4 @@ class SemanticSearchResult:
     reference: str
     content: str
     similarity_score: float
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)

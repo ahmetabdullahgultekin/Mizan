@@ -12,6 +12,7 @@ generous Gemini API Studio free tier.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from mizan.domain.services.embedding_service import IEmbeddingService
 
@@ -42,13 +43,13 @@ class GeminiEmbeddingService(IEmbeddingService):
             )
         self._api_key = api_key
         self._model_name = model_name
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self) -> object:
+    def _get_client(self) -> Any:
         """Get or create the Gemini client."""
         if self._client is None:
             try:
-                import google.generativeai as genai  # type: ignore[import]
+                import google.generativeai as genai
             except ImportError as exc:
                 raise RuntimeError(
                     "google-generativeai is not installed. "
@@ -72,7 +73,7 @@ class GeminiEmbeddingService(IEmbeddingService):
         loop = asyncio.get_event_loop()
 
         def _embed() -> list[list[float]]:
-            import google.generativeai as genai  # type: ignore[import]
+            import google.generativeai as genai
             self._get_client()
 
             result = genai.embed_content(

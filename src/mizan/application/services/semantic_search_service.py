@@ -77,7 +77,7 @@ class SemanticSearchService:
             or SourceType.QURAN in source_types
         )
         # Filter out QURAN from library search (verse_embeddings handles it)
-        non_quran_types = (
+        non_quran_types: list[SourceType] | None = (
             [st for st in source_types if st != SourceType.QURAN]
             if source_types is not None
             else None

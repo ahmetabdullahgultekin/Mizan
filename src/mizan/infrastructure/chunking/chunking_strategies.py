@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -30,7 +31,7 @@ class RawChunk:
     chunk_index: int
     content: str
     reference: str
-    metadata: dict
+    metadata: dict[str, Any]
 
 
 class VerseChunker:

@@ -76,7 +76,7 @@ def get_embedding_service() -> IEmbeddingService:
     return primary
 
 
-def get_embedding_status() -> dict:
+def get_embedding_status() -> dict[str, object]:
     """
     Return the current embedding configuration as a status dict.
     Suitable for the /health endpoint.
@@ -92,12 +92,12 @@ def get_embedding_status() -> dict:
             "primary": svc.primary_model,
             "fallback": svc.fallback_model,
             "currently_using_fallback": svc.is_using_fallback,
-            "dimension": svc.dimension,
+            "dimension": svc.embedding_dimension,
         }
 
     return {
         "mode": "single",
         "provider": settings.embedding_provider,
         "model": svc.model_name,
-        "dimension": svc.dimension,
+        "dimension": svc.embedding_dimension,
     }

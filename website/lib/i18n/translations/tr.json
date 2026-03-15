@@ -82,6 +82,13 @@
     "surahs": "Sure",
     "basmalahAbjad": "Besmele Ebced",
     "accuracy": "Dogruluk %",
+    "singleVerse": "Tek Ayet",
+    "verseRange": "Ayet Araligi",
+    "fromAyah": "Baslangic Ayet",
+    "toAyah": "Bitis Ayet",
+    "aggregate": "Toplam Degerler",
+    "perVerse": "Ayet Ayet Dokum",
+    "verses": "ayet",
     "tipBasmalah": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ analiz edin — 19 harf ve 786 Ebced degeri.",
     "tipAllah": "الله kelimesinin Masriki sistemde Ebced degeri 66'dir.",
     "tipMuhammad": "محمد isminin Ebced degeri 92'dir."

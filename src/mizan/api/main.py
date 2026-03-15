@@ -106,13 +106,13 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
 
     # Rate limit exceeded → 429
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # Sentry ASGI middleware — only added when sentry_sdk is installed and DSN is set
     if settings.sentry_dsn:
         try:
             from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
-            app.add_middleware(SentryAsgiMiddleware)  # type: ignore[arg-type]
+            app.add_middleware(SentryAsgiMiddleware)
         except ImportError:
             pass  # sentry_sdk not installed; warning already emitted at startup
 
@@ -228,7 +228,7 @@ def create_app() -> FastAPI:
     # ---------------------------------------------------------------------------
 
     try:
-        from prometheus_fastapi_instrumentator import Instrumentator  # type: ignore[import]
+        from prometheus_fastapi_instrumentator import Instrumentator
         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
     except ImportError:
         pass  # prometheus_fastapi_instrumentator not installed; /metrics unavailable

@@ -222,7 +222,7 @@ class PostgresQuranRepository(IQuranRepository):
         if surah_number is not None:
             stmt = stmt.where(VerseModel.surah_number == surah_number)
         result = await self._session.execute(stmt)
-        return result.scalar_one()
+        return int(result.scalar_one())
 
     async def get_verses_by_criteria(
         self,

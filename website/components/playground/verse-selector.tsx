@@ -28,27 +28,35 @@ interface VerseSelectorProps {
   isLoadingSurahs?: boolean;
   selectedSurah: number | null;
   selectedAyah: number | null;
+  selectedToAyah?: number | null;
+  rangeMode?: boolean;
   onSurahChange: (surah: number | null) => void;
   onAyahChange: (ayah: number | null) => void;
+  onToAyahChange?: (ayah: number | null) => void;
+  onRangeModeChange?: (rangeMode: boolean) => void;
   className?: string;
 }
 
 /**
  * Enhanced Verse Selector Component
  *
- * Allows users to select a specific verse from the Quran with:
+ * Allows users to select a specific verse or a range of verses from the Quran with:
  * - Surah dropdown with Arabic names
- * - Ayah dropdown with count
+ * - Ayah dropdown with count (single or range mode)
  * - Live verse text preview
- * - Previous/Next navigation buttons
+ * - Previous/Next navigation buttons (single mode only)
  */
 export function VerseSelector({
   surahs = [],
   isLoadingSurahs = false,
   selectedSurah,
   selectedAyah,
+  selectedToAyah = null,
+  rangeMode = false,
   onSurahChange,
   onAyahChange,
+  onToAyahChange,
+  onRangeModeChange,
   className,
 }: VerseSelectorProps) {
   const { t } = useI18n();
@@ -59,9 +67,9 @@ export function VerseSelector({
   const [versePreview, setVersePreview] = React.useState<VerseResponse | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = React.useState(false);
 
-  // Fetch verse text when selection changes
+  // Fetch verse text when selection changes (only in single mode)
   React.useEffect(() => {
-    if (!selectedSurah || !selectedAyah) {
+    if (rangeMode || !selectedSurah || !selectedAyah) {
       setVersePreview(null);
       return;
     }
@@ -84,16 +92,33 @@ export function VerseSelector({
     return () => {
       cancelled = true;
     };
-  }, [selectedSurah, selectedAyah]);
+  }, [selectedSurah, selectedAyah, rangeMode]);
 
   const handleSurahChange = (value: string) => {
     const surahNum = parseInt(value, 10);
     onSurahChange(surahNum);
     onAyahChange(null); // Reset ayah when surah changes
+    onToAyahChange?.(null);
   };
 
   const handleAyahChange = (value: string) => {
-    onAyahChange(parseInt(value, 10));
+    const ayah = parseInt(value, 10);
+    onAyahChange(ayah);
+    // If range mode and toAyah is set but less than new fromAyah, reset it
+    if (rangeMode && selectedToAyah !== null && selectedToAyah < ayah) {
+      onToAyahChange?.(null);
+    }
+  };
+
+  const handleToAyahChange = (value: string) => {
+    onToAyahChange?.(parseInt(value, 10));
+  };
+
+  const handleRangeModeToggle = (isRange: boolean) => {
+    onRangeModeChange?.(isRange);
+    if (!isRange) {
+      onToAyahChange?.(null);
+    }
   };
 
   const goToPrevVerse = () => {
@@ -101,7 +126,6 @@ export function VerseSelector({
     if (selectedAyah > 1) {
       onAyahChange(selectedAyah - 1);
     } else if (selectedSurah > 1) {
-      // Go to last verse of previous surah
       const prevSurah = surahs.find((s) => s.number === selectedSurah - 1);
       if (prevSurah) {
         onSurahChange(prevSurah.number);
@@ -115,7 +139,6 @@ export function VerseSelector({
     if (selectedAyah < verseCount) {
       onAyahChange(selectedAyah + 1);
     } else if (selectedSurah < 114) {
-      // Go to first verse of next surah
       onSurahChange(selectedSurah + 1);
       onAyahChange(1);
     }
@@ -124,16 +147,48 @@ export function VerseSelector({
   const canGoPrev = selectedSurah !== null && selectedAyah !== null && !(selectedSurah === 1 && selectedAyah === 1);
   const canGoNext = selectedSurah !== null && selectedAyah !== null && !(selectedSurah === 114 && selectedAyah === verseCount);
 
+  const rangeVerseCount = rangeMode && selectedAyah && selectedToAyah
+    ? selectedToAyah - selectedAyah + 1
+    : null;
+
   return (
     <div className={cn('space-y-4', className)}>
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-5 w-5 text-gold-500" />
-        <h3 className="font-medium">{t('playground.selectVerse')}</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-gold-500" />
+          <h3 className="font-medium">{t('playground.selectVerse')}</h3>
+        </div>
+
+        {/* Range mode toggle */}
+        <div className="flex items-center gap-1 rounded-lg border p-0.5">
+          <button
+            onClick={() => handleRangeModeToggle(false)}
+            className={cn(
+              'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+              !rangeMode
+                ? 'bg-gold-500/15 text-gold-500'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t('playground.singleVerse')}
+          </button>
+          <button
+            onClick={() => handleRangeModeToggle(true)}
+            className={cn(
+              'rounded-md px-3 py-1 text-xs font-medium transition-colors',
+              rangeMode
+                ? 'bg-gold-500/15 text-gold-500'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t('playground.verseRange')}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Surah Select */}
-        <div className="space-y-2">
+        <div className={cn('space-y-2', rangeMode ? 'sm:col-span-2' : '')}>
           <label className="text-sm text-muted-foreground">{t('playground.surah')}</label>
           <Select
             value={selectedSurah?.toString() || ''}
@@ -161,10 +216,11 @@ export function VerseSelector({
           </Select>
         </div>
 
-        {/* Ayah Select */}
+        {/* Ayah Select (or From Ayah in range mode) */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">
-            {t('playground.ayah')} {verseCount > 0 && `(1-${verseCount})`}
+            {rangeMode ? t('playground.fromAyah') : t('playground.ayah')}{' '}
+            {verseCount > 0 && `(1-${verseCount})`}
           </label>
           <Select
             value={selectedAyah?.toString() || ''}
@@ -172,21 +228,63 @@ export function VerseSelector({
             disabled={!selectedSurah}
           >
             <SelectTrigger>
-              <SelectValue placeholder={t('playground.selectAyah')} />
+              <SelectValue placeholder={rangeMode ? t('playground.fromAyah') : t('playground.selectAyah')} />
             </SelectTrigger>
             <SelectContent>
               {Array.from({ length: verseCount }, (_, i) => i + 1).map((ayah) => (
                 <SelectItem key={ayah} value={ayah.toString()}>
-                  Ayah {ayah}
+                  {rangeMode ? `${t('playground.ayah')} ${ayah}` : `Ayah ${ayah}`}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* To Ayah (range mode only) */}
+        {rangeMode && (
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground">
+              {t('playground.toAyah')}{' '}
+              {selectedAyah && verseCount > 0 && `(${selectedAyah}-${verseCount})`}
+            </label>
+            <Select
+              value={selectedToAyah?.toString() || ''}
+              onValueChange={handleToAyahChange}
+              disabled={!selectedSurah || !selectedAyah}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t('playground.toAyah')} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedAyah && Array.from(
+                  { length: verseCount - selectedAyah + 1 },
+                  (_, i) => selectedAyah + i
+                ).map((ayah) => (
+                  <SelectItem key={ayah} value={ayah.toString()}>
+                    {t('playground.ayah')} {ayah}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      {/* Verse Navigation */}
-      {selectedSurah && selectedAyah && (
+      {/* Range summary badge */}
+      {rangeMode && rangeVerseCount && selectedSurahData && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2"
+        >
+          <Badge variant="gold" className="text-xs">
+            {selectedSurahData.name_english} {selectedAyah}-{selectedToAyah} ({rangeVerseCount} {t('playground.verses')})
+          </Badge>
+        </motion.div>
+      )}
+
+      {/* Verse Navigation (single mode only) */}
+      {!rangeMode && selectedSurah && selectedAyah && (
         <div className="flex items-center justify-between gap-2">
           <Button
             variant="outline"
@@ -216,9 +314,9 @@ export function VerseSelector({
         </div>
       )}
 
-      {/* Verse Text Preview */}
+      {/* Verse Text Preview (single mode only) */}
       <AnimatePresence mode="wait">
-        {selectedSurah && selectedAyah && (
+        {!rangeMode && selectedSurah && selectedAyah && (
           <motion.div
             key={`${selectedSurah}:${selectedAyah}`}
             initial={{ opacity: 0, y: -10 }}

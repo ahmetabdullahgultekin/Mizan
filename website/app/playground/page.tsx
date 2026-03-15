@@ -7,6 +7,7 @@ import * as React from 'react';
 import { GlowingOrbs } from '@/components/animated/floating-particles';
 import { Spotlight } from '@/components/animated/spotlight';
 import { VerseSelector, AnalysisResults, MethodSelector } from '@/components/playground';
+import type { VerseRangeResult } from '@/components/playground/analysis-results';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArabicTextarea } from '@/components/ui/input';
@@ -26,7 +27,7 @@ import type {
  * Playground Page
  *
  * Interactive page for analyzing Quranic text.
- * Supports both verse selection and custom text input.
+ * Supports both verse selection (single + range) and custom text input.
  */
 export default function PlaygroundPage() {
   const { t } = useI18n();
@@ -34,11 +35,14 @@ export default function PlaygroundPage() {
   const [inputMode, setInputMode] = React.useState<'verse' | 'custom'>('custom');
   const [selectedSurah, setSelectedSurah] = React.useState<number | null>(null);
   const [selectedAyah, setSelectedAyah] = React.useState<number | null>(null);
+  const [selectedToAyah, setSelectedToAyah] = React.useState<number | null>(null);
+  const [rangeMode, setRangeMode] = React.useState(false);
   const [customText, setCustomText] = React.useState('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ');
   const [letterMethod, setLetterMethod] = React.useState<LetterCountMethod>('traditional');
   const [abjadSystem, setAbjadSystem] = React.useState<AbjadSystem>('mashriqi');
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [result, setResult] = React.useState<AnalysisResponse | null>(null);
+  const [rangeResults, setRangeResults] = React.useState<VerseRangeResult[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [similarVerses, setSimilarVerses] = React.useState<SimilarVerseResponse[]>([]);
   const [isFindingSimilar, setIsFindingSimilar] = React.useState(false);
@@ -47,6 +51,7 @@ export default function PlaygroundPage() {
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setResult(null);
+    setRangeResults(null);
     setError(null);
     setSimilarVerses([]);
 
@@ -54,29 +59,74 @@ export default function PlaygroundPage() {
       const client = getApiClient();
 
       if (inputMode === 'verse' && selectedSurah && selectedAyah) {
-        const raw: VerseAnalysisResponse = await client.analyzeVerse(selectedSurah, selectedAyah);
+        // Range mode: analyze multiple verses
+        if (rangeMode && selectedToAyah && selectedToAyah > selectedAyah) {
+          const ayahNumbers = Array.from(
+            { length: selectedToAyah - selectedAyah + 1 },
+            (_, i) => selectedAyah + i
+          );
 
-        const breakdown = raw.letter_frequency?.top_items?.map((item) => ({
-          letter: item.letter,
-          count: item.count,
-          percentage: item.percentage,
-          abjad_value: raw.abjad.breakdown?.find((b) => b.letter === item.letter)?.abjad_value,
-        }));
+          // Fetch all verse analyses in parallel
+          const responses: VerseAnalysisResponse[] = await Promise.all(
+            ayahNumbers.map((ayah) => client.analyzeVerse(selectedSurah, ayah))
+          );
 
-        // Use the actual Arabic verse text from the analysis response
-        const verseText = raw.abjad?.text_analyzed || raw.location;
+          // Build per-verse results
+          const perVerseResults: VerseRangeResult[] = responses.map((raw, i) => ({
+            surah: selectedSurah,
+            ayah: ayahNumbers[i],
+            text: raw.abjad?.text_analyzed || raw.location,
+            letter_count: raw.letters.count,
+            word_count: raw.words.count,
+            abjad_value: raw.abjad.value,
+          }));
 
-        setResult({
-          text: verseText,
-          letter_count: raw.letters.count,
-          word_count: raw.words.count,
-          abjad_value: raw.abjad.value,
-          letter_method: letterMethod,
-          abjad_system: abjadSystem,
-          breakdown,
-          metadata: { surah: selectedSurah, ayah: selectedAyah },
-        });
+          // Calculate aggregates
+          const totalLetters = perVerseResults.reduce((s, v) => s + v.letter_count, 0);
+          const totalWords = perVerseResults.reduce((s, v) => s + v.word_count, 0);
+          const totalAbjad = perVerseResults.reduce((s, v) => s + v.abjad_value, 0);
+
+          setRangeResults(perVerseResults);
+          setResult({
+            text: '', // No single text for range
+            letter_count: totalLetters,
+            word_count: totalWords,
+            abjad_value: totalAbjad,
+            letter_method: letterMethod,
+            abjad_system: abjadSystem,
+            metadata: {
+              surah: selectedSurah,
+              ayah: selectedAyah,
+              source: `${selectedSurah}:${selectedAyah}-${selectedToAyah}`,
+            },
+          });
+        } else {
+          // Single verse mode (existing behavior)
+          const raw: VerseAnalysisResponse = await client.analyzeVerse(selectedSurah, selectedAyah);
+
+          const breakdown = raw.letter_frequency?.top_items?.map((item) => ({
+            letter: item.letter,
+            count: item.count,
+            percentage: item.percentage,
+            abjad_value: raw.abjad.breakdown?.find((b) => b.letter === item.letter)?.abjad_value,
+          }));
+
+          const verseText = raw.abjad?.text_analyzed || raw.location;
+
+          setRangeResults(null);
+          setResult({
+            text: verseText,
+            letter_count: raw.letters.count,
+            word_count: raw.words.count,
+            abjad_value: raw.abjad.value,
+            letter_method: letterMethod,
+            abjad_system: abjadSystem,
+            breakdown,
+            metadata: { surah: selectedSurah, ayah: selectedAyah },
+          });
+        }
       } else {
+        // Custom text mode (existing behavior)
         const [letterRes, wordRes, abjadRes] = await Promise.all([
           client.countLetters({ text: customText }),
           client.countWords({ text: customText }),
@@ -87,6 +137,7 @@ export default function PlaygroundPage() {
           }),
         ]);
 
+        setRangeResults(null);
         setResult({
           text: customText,
           letter_count: letterRes.count,
@@ -126,15 +177,21 @@ export default function PlaygroundPage() {
 
   const handleReset = () => {
     setResult(null);
+    setRangeResults(null);
     setError(null);
     setSimilarVerses([]);
     setCustomText('');
     setSelectedSurah(null);
     setSelectedAyah(null);
+    setSelectedToAyah(null);
   };
 
   const canAnalyze =
-    inputMode === 'custom' ? customText.trim().length > 0 : selectedSurah && selectedAyah;
+    inputMode === 'custom'
+      ? customText.trim().length > 0
+      : rangeMode
+        ? selectedSurah && selectedAyah && selectedToAyah
+        : selectedSurah && selectedAyah;
 
   return (
     <div className="relative min-h-screen pt-20">
@@ -206,8 +263,12 @@ export default function PlaygroundPage() {
                     isLoadingSurahs={isLoadingSurahs}
                     selectedSurah={selectedSurah}
                     selectedAyah={selectedAyah}
+                    selectedToAyah={selectedToAyah}
+                    rangeMode={rangeMode}
                     onSurahChange={setSelectedSurah}
                     onAyahChange={setSelectedAyah}
+                    onToAyahChange={setSelectedToAyah}
+                    onRangeModeChange={setRangeMode}
                   />
                 </TabsContent>
               </Tabs>
@@ -270,9 +331,13 @@ export default function PlaygroundPage() {
                 )}
               </AnimatePresence>
 
-              <AnalysisResults result={result} isLoading={isAnalyzing} />
+              <AnalysisResults
+                result={result}
+                rangeResults={rangeResults}
+                isLoading={isAnalyzing}
+              />
 
-              {inputMode === 'verse' && result && selectedSurah && selectedAyah && (
+              {inputMode === 'verse' && result && selectedSurah && selectedAyah && !rangeMode && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -312,6 +377,7 @@ export default function PlaygroundPage() {
                               setSelectedAyah(v.verse_number);
                               setSimilarVerses([]);
                               setResult(null);
+                              setRangeResults(null);
                             }}
                           />
                         ))}

@@ -82,6 +82,13 @@
     "surahs": "Surahs",
     "basmalahAbjad": "Basmalah Abjad",
     "accuracy": "Accuracy %",
+    "singleVerse": "Single Verse",
+    "verseRange": "Verse Range",
+    "fromAyah": "From Ayah",
+    "toAyah": "To Ayah",
+    "aggregate": "Aggregate Totals",
+    "perVerse": "Per-Verse Breakdown",
+    "verses": "verses",
     "tipBasmalah": "Try analyzing بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ — it has 19 letters and Abjad value of 786.",
     "tipAllah": "The word الله has an Abjad value of 66 in the Mashriqi system.",
     "tipMuhammad": "The name محمد has an Abjad value of 92."

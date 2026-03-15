@@ -16,8 +16,18 @@ import {
 import { useI18n } from '@/lib/i18n';
 import type { AnalysisResponse, LetterBreakdown } from '@/types/api';
 
+export interface VerseRangeResult {
+  surah: number;
+  ayah: number;
+  text: string;
+  letter_count: number;
+  word_count: number;
+  abjad_value: number;
+}
+
 interface AnalysisResultsProps {
   result: AnalysisResponse | null;
+  rangeResults?: VerseRangeResult[] | null;
   isLoading: boolean;
   className?: string;
 }
@@ -26,13 +36,16 @@ interface AnalysisResultsProps {
  * Analysis Results Component
  *
  * Displays the results of text analysis with animated counters.
+ * Supports both single verse and range mode with aggregate totals + per-verse breakdown.
  */
-export function AnalysisResults({ result, isLoading, className }: AnalysisResultsProps) {
+export function AnalysisResults({ result, rangeResults, isLoading, className }: AnalysisResultsProps) {
   const { t } = useI18n();
+  const isRange = rangeResults && rangeResults.length > 1;
+
   return (
     <div className={cn('space-y-6', className)}>
-      {/* Analyzed Text Display */}
-      {result?.text && (
+      {/* Analyzed Text Display (single verse only) */}
+      {result?.text && !isRange && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -54,7 +67,20 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
         </motion.div>
       )}
 
-      {/* Main Results */}
+      {/* Aggregate header for range mode */}
+      {isRange && result && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2"
+        >
+          <Badge variant="gold" className="text-xs">
+            {t('playground.aggregate')} — {rangeResults.length} {t('playground.verses')}
+          </Badge>
+        </motion.div>
+      )}
+
+      {/* Main Results (aggregate totals for range, or single result) */}
       <div className="grid gap-4 md:grid-cols-3">
         <ResultCard
           icon={<Hash className="h-5 w-5" />}
@@ -93,8 +119,63 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
         />
       </div>
 
-      {/* Letter Breakdown */}
-      {result?.breakdown && result.breakdown.length > 0 && (
+      {/* Per-Verse Breakdown Table (range mode) */}
+      {isRange && rangeResults && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="glass-card rounded-xl p-5"
+        >
+          <h4 className="mb-4 text-sm font-medium text-muted-foreground">
+            {t('playground.perVerse')}
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="pb-2 pr-4 font-medium">{t('playground.ayah')}</th>
+                  <th className="pb-2 pr-4 text-right font-medium" dir="rtl">{t('playground.customText')}</th>
+                  <th className="pb-2 pr-4 font-medium text-right">{t('playground.letters')}</th>
+                  <th className="pb-2 pr-4 font-medium text-right">{t('playground.words')}</th>
+                  <th className="pb-2 font-medium text-right">{t('playground.abjadValue')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rangeResults.map((v, index) => (
+                  <motion.tr
+                    key={`${v.surah}:${v.ayah}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * index }}
+                    className="border-b border-border/50 last:border-0"
+                  >
+                    <td className="py-2.5 pr-4">
+                      <span className="font-mono text-xs text-gold-500">
+                        {v.surah}:{v.ayah}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-right" dir="rtl" lang="ar">
+                      <p
+                        className="line-clamp-1 font-arabic text-sm"
+                        style={{ fontFamily: 'var(--font-amiri), serif' }}
+                      >
+                        {v.text}
+                      </p>
+                    </td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{v.letter_count}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{v.word_count}</td>
+                    <td className="py-2.5 text-right tabular-nums">{v.abjad_value}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Letter Breakdown (single verse only) */}
+      {!isRange && result?.breakdown && result.breakdown.length > 0 && (
         <LetterBreakdownChart breakdown={result.breakdown} />
       )}
     </div>

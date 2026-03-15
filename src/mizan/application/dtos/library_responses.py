@@ -5,6 +5,7 @@ Pydantic response models for the Library and Semantic Search API.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -48,7 +49,7 @@ class SemanticSearchResultResponse(BaseModel):
     reference: str
     content: str
     similarity_score: float
-    metadata: dict
+    metadata: dict[str, Any]
 
     model_config = {"from_attributes": True}
 

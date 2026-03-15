@@ -150,8 +150,37 @@ module = [
     "transformers.*",
     "torch.*",
     "google.generativeai.*",
+    "fastapi",
+    "fastapi.*",
+    "sqlalchemy",
+    "sqlalchemy.*",
+    "structlog",
+    "structlog.*",
+    "slowapi",
+    "slowapi.*",
+    "pydantic_settings",
+    "pydantic_settings.*",
+    "sentry_sdk",
+    "sentry_sdk.*",
+    "prometheus_fastapi_instrumentator",
+    "prometheus_fastapi_instrumentator.*",
+    "google",
+    "google.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mizan.api.*",
+]
+disable_error_code = ["untyped-decorator"]
+
+[[tool.mypy.overrides]]
+module = [
+    "mizan.infrastructure.persistence.database",
+    "mizan.infrastructure.config",
+]
+disable_error_code = ["misc"]
 
 [tool.ruff]
 target-version = "py311"

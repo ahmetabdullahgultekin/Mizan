@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from functools import lru_cache
+from typing import Any
 
 from mizan.domain.services.embedding_service import IEmbeddingService
 
@@ -33,14 +34,14 @@ class SentenceTransformerEmbeddingService(IEmbeddingService):
 
     def __init__(self, model_name: str = "intfloat/multilingual-e5-base") -> None:
         self._model_name = model_name
-        self._model: object | None = None
+        self._model: Any = None
         self._dimension: int | None = None
 
-    def _load_model(self) -> object:
+    def _load_model(self) -> Any:
         """Load the sentence-transformer model (blocking, cached)."""
         if self._model is None:
             try:
-                from sentence_transformers import SentenceTransformer  # type: ignore[import]
+                from sentence_transformers import SentenceTransformer
             except ImportError as exc:
                 raise RuntimeError(
                     "sentence-transformers is not installed. "
@@ -49,7 +50,7 @@ class SentenceTransformerEmbeddingService(IEmbeddingService):
 
             self._model = SentenceTransformer(self._model_name)
             # Cache the dimension
-            test_emb = self._model.encode(["test"])  # type: ignore[union-attr]
+            test_emb = self._model.encode(["test"])
             self._dimension = int(test_emb.shape[1])
 
         return self._model
@@ -71,7 +72,7 @@ class SentenceTransformerEmbeddingService(IEmbeddingService):
 
         def _encode() -> list[list[float]]:
             model = self._load_model()
-            embeddings = model.encode(  # type: ignore[union-attr]
+            embeddings = model.encode(
                 texts,
                 normalize_embeddings=True,
                 show_progress_bar=False,
