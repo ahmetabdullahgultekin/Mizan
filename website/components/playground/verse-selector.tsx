@@ -1,10 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { BookOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -13,6 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { getApiClient } from '@/lib/api/client';
+import type { VerseResponse } from '@/types/api';
 
 interface VerseSelectorProps {
   surahs?: Array<{
@@ -30,9 +33,13 @@ interface VerseSelectorProps {
 }
 
 /**
- * Verse Selector Component
+ * Enhanced Verse Selector Component
  *
- * Allows users to select a specific verse from the Quran.
+ * Allows users to select a specific verse from the Quran with:
+ * - Surah dropdown with Arabic names
+ * - Ayah dropdown with count
+ * - Live verse text preview
+ * - Previous/Next navigation buttons
  */
 export function VerseSelector({
   surahs = [],
@@ -46,6 +53,37 @@ export function VerseSelector({
   const selectedSurahData = surahs.find((s) => s.number === selectedSurah);
   const verseCount = selectedSurahData?.verse_count || 0;
 
+  // Verse text preview state
+  const [versePreview, setVersePreview] = React.useState<VerseResponse | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = React.useState(false);
+
+  // Fetch verse text when selection changes
+  React.useEffect(() => {
+    if (!selectedSurah || !selectedAyah) {
+      setVersePreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingPreview(true);
+
+    getApiClient()
+      .getVerse(selectedSurah, selectedAyah)
+      .then((verse) => {
+        if (!cancelled) setVersePreview(verse);
+      })
+      .catch(() => {
+        if (!cancelled) setVersePreview(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSurah, selectedAyah]);
+
   const handleSurahChange = (value: string) => {
     const surahNum = parseInt(value, 10);
     onSurahChange(surahNum);
@@ -55,6 +93,34 @@ export function VerseSelector({
   const handleAyahChange = (value: string) => {
     onAyahChange(parseInt(value, 10));
   };
+
+  const goToPrevVerse = () => {
+    if (!selectedSurah || !selectedAyah) return;
+    if (selectedAyah > 1) {
+      onAyahChange(selectedAyah - 1);
+    } else if (selectedSurah > 1) {
+      // Go to last verse of previous surah
+      const prevSurah = surahs.find((s) => s.number === selectedSurah - 1);
+      if (prevSurah) {
+        onSurahChange(prevSurah.number);
+        onAyahChange(prevSurah.verse_count);
+      }
+    }
+  };
+
+  const goToNextVerse = () => {
+    if (!selectedSurah || !selectedAyah) return;
+    if (selectedAyah < verseCount) {
+      onAyahChange(selectedAyah + 1);
+    } else if (selectedSurah < 114) {
+      // Go to first verse of next surah
+      onSurahChange(selectedSurah + 1);
+      onAyahChange(1);
+    }
+  };
+
+  const canGoPrev = selectedSurah !== null && selectedAyah !== null && !(selectedSurah === 1 && selectedAyah === 1);
+  const canGoNext = selectedSurah !== null && selectedAyah !== null && !(selectedSurah === 114 && selectedAyah === verseCount);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -117,22 +183,85 @@ export function VerseSelector({
         </div>
       </div>
 
-      {/* Selected verse info */}
+      {/* Verse Navigation */}
       {selectedSurah && selectedAyah && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg bg-gold-500/10 p-3"
-        >
-          <p className="text-sm">
-            <span className="text-muted-foreground">Selected: </span>
-            <span className="font-medium text-gold-500">
-              {selectedSurahData?.name_english} ({selectedSurahData?.name_arabic}) - Ayah{' '}
-              {selectedAyah}
-            </span>
-          </p>
-        </motion.div>
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToPrevVerse}
+            disabled={!canGoPrev}
+            className="gap-1"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+
+          <span className="text-sm font-medium text-gold-500">
+            {selectedSurahData?.name_english} {selectedSurah}:{selectedAyah}
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToNextVerse}
+            disabled={!canGoNext}
+            className="gap-1"
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       )}
+
+      {/* Verse Text Preview */}
+      <AnimatePresence mode="wait">
+        {selectedSurah && selectedAyah && (
+          <motion.div
+            key={`${selectedSurah}:${selectedAyah}`}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="rounded-xl border border-gold-500/20 bg-gold-500/5 p-4"
+          >
+            {isLoadingPreview ? (
+              <div className="flex items-center justify-center py-3 text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading verse...</span>
+              </div>
+            ) : versePreview ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {versePreview.surah_name_english} ({versePreview.surah_name_arabic})
+                  </span>
+                  <span className="font-mono">
+                    {versePreview.surah_number}:{versePreview.verse_number}
+                  </span>
+                </div>
+                <p
+                  dir="rtl"
+                  lang="ar"
+                  className="text-lg leading-loose md:text-xl"
+                  style={{ fontFamily: 'var(--font-amiri), serif' }}
+                >
+                  {versePreview.text_uthmani}
+                </p>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span>Juz {versePreview.juz_number}</span>
+                  <span>Page {versePreview.page_number}</span>
+                  <span>{versePreview.word_count} words</span>
+                  <span>{versePreview.letter_count} letters</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-muted-foreground">
+                Verse not found
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
