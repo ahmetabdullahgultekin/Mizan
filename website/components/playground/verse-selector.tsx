@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { getApiClient } from '@/lib/api/client';
+import { useI18n } from '@/lib/i18n';
 import type { VerseResponse } from '@/types/api';
 
 interface VerseSelectorProps {
@@ -50,6 +51,7 @@ export function VerseSelector({
   onAyahChange,
   className,
 }: VerseSelectorProps) {
+  const { t } = useI18n();
   const selectedSurahData = surahs.find((s) => s.number === selectedSurah);
   const verseCount = selectedSurahData?.verse_count || 0;
 
@@ -126,20 +128,20 @@ export function VerseSelector({
     <div className={cn('space-y-4', className)}>
       <div className="flex items-center gap-2">
         <BookOpen className="h-5 w-5 text-gold-500" />
-        <h3 className="font-medium">Select Verse</h3>
+        <h3 className="font-medium">{t('playground.selectVerse')}</h3>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Surah Select */}
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">Surah</label>
+          <label className="text-sm text-muted-foreground">{t('playground.surah')}</label>
           <Select
             value={selectedSurah?.toString() || ''}
             onValueChange={handleSurahChange}
             disabled={isLoadingSurahs}
           >
             <SelectTrigger>
-              <SelectValue placeholder={isLoadingSurahs ? 'Loading surahs...' : 'Select Surah'} />
+              <SelectValue placeholder={isLoadingSurahs ? t('playground.loadingSurahs') : t('playground.selectSurah')} />
             </SelectTrigger>
             <SelectContent>
               {surahs.map((surah) => (
@@ -162,7 +164,7 @@ export function VerseSelector({
         {/* Ayah Select */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">
-            Ayah {verseCount > 0 && `(1-${verseCount})`}
+            {t('playground.ayah')} {verseCount > 0 && `(1-${verseCount})`}
           </label>
           <Select
             value={selectedAyah?.toString() || ''}
@@ -170,7 +172,7 @@ export function VerseSelector({
             disabled={!selectedSurah}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select Ayah" />
+              <SelectValue placeholder={t('playground.selectAyah')} />
             </SelectTrigger>
             <SelectContent>
               {Array.from({ length: verseCount }, (_, i) => i + 1).map((ayah) => (
@@ -194,7 +196,7 @@ export function VerseSelector({
             className="gap-1"
           >
             <ChevronLeft className="h-4 w-4" />
-            Previous
+            {t('common.previous')}
           </Button>
 
           <span className="text-sm font-medium text-gold-500">
@@ -208,7 +210,7 @@ export function VerseSelector({
             disabled={!canGoNext}
             className="gap-1"
           >
-            Next
+            {t('common.next')}
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

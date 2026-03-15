@@ -13,6 +13,7 @@ import { GlowingOrbs, GeometricFloating } from '@/components/animated/floating-p
 import { SpotlightButton } from '@/components/animated/spotlight';
 import { AnimatedCounter } from '@/components/animated/animated-counter';
 import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations/variants';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Hero Section
@@ -21,6 +22,7 @@ import { fadeInUp, staggerContainer, staggerItem } from '@/lib/animations/varian
  * floating particles, and call-to-action buttons.
  */
 export function Hero() {
+  const { t } = useI18n();
   const prefersReducedMotion = useReducedMotion();
 
   // When the user prefers reduced motion, skip stagger animations and show content immediately.
@@ -49,7 +51,7 @@ export function Hero() {
           <motion.div variants={itemVariants}>
             <Badge variant="glass" className="mb-6 px-4 py-1.5">
               <Sparkles className="mr-2 h-3 w-3 text-gold-500" />
-              <span>Open Source Quranic Analysis Engine</span>
+              <span>{t('hero.badge')}</span>
             </Badge>
           </motion.div>
 
@@ -67,10 +69,8 @@ export function Hero() {
             variants={itemVariants}
             className="mb-6 text-4xl font-bold tracking-tight md:text-6xl lg:text-7xl"
           >
-            <span className="text-foreground">Discover the </span>
-            <GradientText text="Precision" />
-            <br />
-            <span className="text-foreground">of Quranic Analysis</span>
+            <span className="text-foreground">{t('hero.title')} </span>
+            <GradientText text={t('hero.titleHighlight')} />
           </motion.h1>
 
           {/* Subheading */}
@@ -78,9 +78,7 @@ export function Hero() {
             variants={itemVariants}
             className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground md:text-xl"
           >
-            High-precision letter counting, word analysis, and Abjad calculations.
-            Verified against{' '}
-            <span className="text-gold-500">Tanzil.net</span> and scholarly standards.
+            {t('hero.description')}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -90,7 +88,7 @@ export function Hero() {
           >
             <SpotlightButton className="group px-8 py-4 text-base">
               <Link href="/playground" className="flex items-center">
-                Try Playground
+                {t('hero.cta')}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </SpotlightButton>
@@ -98,7 +96,7 @@ export function Hero() {
             <Button variant="outline" size="lg" className="group" asChild>
               <Link href="/docs">
                 <Play className="mr-2 h-4 w-4" />
-                View Documentation
+                {t('hero.ctaSecondary')}
               </Link>
             </Button>
           </motion.div>

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { navigationConfig } from '@/config/navigation';
 import { Separator } from '@/components/ui/separator';
 import { staggerContainer, staggerItem } from '@/lib/animations/variants';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Footer Component
@@ -16,6 +17,7 @@ import { staggerContainer, staggerItem } from '@/lib/animations/variants';
  * Site footer with navigation links, social links, and copyright.
  */
 export function Footer() {
+  const { t } = useI18n();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -74,7 +76,7 @@ export function Footer() {
 
           {/* Product Links */}
           <motion.div variants={staggerItem}>
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Product</h3>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">{t('footer.product')}</h3>
             <ul className="space-y-3">
               {navigationConfig.footerNav.product.map((item) => (
                 <li key={item.href}>
@@ -103,7 +105,7 @@ export function Footer() {
 
           {/* Resources Links */}
           <motion.div variants={staggerItem}>
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Resources</h3>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">{t('footer.resources')}</h3>
             <ul className="space-y-3">
               {navigationConfig.footerNav.resources.map((item) => (
                 <li key={item.href}>
@@ -120,7 +122,7 @@ export function Footer() {
 
           {/* Company Links */}
           <motion.div variants={staggerItem}>
-            <h3 className="mb-4 text-sm font-semibold text-foreground">Company</h3>
+            <h3 className="mb-4 text-sm font-semibold text-foreground">{t('footer.company')}</h3>
             <ul className="space-y-3">
               {navigationConfig.footerNav.company.map((item) => (
                 <li key={item.href}>
@@ -154,11 +156,11 @@ export function Footer() {
         <div className="flex flex-col items-center justify-between space-y-4 text-sm text-muted-foreground md:flex-row md:space-y-0">
           <div className="flex items-center space-x-1">
             <span>&copy; {currentYear} Mizan.</span>
-            <span className="hidden sm:inline">All rights reserved.</span>
+            <span className="hidden sm:inline">{t('footer.rights')}</span>
           </div>
 
           <div className="flex items-center space-x-1">
-            <span>Made with</span>
+            <span>{t('footer.madeWith')}</span>
             <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
             <span>for the</span>
             <span className="font-arabic text-gold-500" dir="rtl" lang="ar">

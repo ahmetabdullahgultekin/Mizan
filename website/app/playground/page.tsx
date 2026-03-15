@@ -13,6 +13,7 @@ import { ArabicTextarea } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSurahList } from '@/hooks/use-verse-analysis';
 import { getApiClient } from '@/lib/api/client';
+import { useI18n } from '@/lib/i18n';
 import type {
   LetterCountMethod,
   AbjadSystem,
@@ -28,6 +29,7 @@ import type {
  * Supports both verse selection and custom text input.
  */
 export default function PlaygroundPage() {
+  const { t } = useI18n();
   // State
   const [inputMode, setInputMode] = React.useState<'verse' | 'custom'>('custom');
   const [selectedSurah, setSelectedSurah] = React.useState<number | null>(null);
@@ -146,14 +148,13 @@ export default function PlaygroundPage() {
         >
           <Badge variant="gold" className="mb-4">
             <Sparkles className="mr-2 h-3 w-3" />
-            Interactive Playground
+            {t('playground.badge')}
           </Badge>
           <h1 className="mb-4 text-3xl font-bold md:text-4xl">
-            Quranic Text <span className="text-gradient-gold">Analysis</span>
+            {t('playground.title')}
           </h1>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Analyze Quranic verses or custom Arabic text with precision letter counting, word
-            analysis, and Abjad calculations.
+            {t('playground.description')}
           </p>
         </motion.div>
 
@@ -173,18 +174,18 @@ export default function PlaygroundPage() {
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="custom" className="flex items-center gap-2">
                     <Keyboard className="h-4 w-4" />
-                    Custom Text
+                    {t('playground.customText')}
                   </TabsTrigger>
                   <TabsTrigger value="verse" className="flex items-center gap-2">
                     <History className="h-4 w-4" />
-                    Select Verse
+                    {t('playground.selectVerse')}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="custom" className="mt-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">
-                      Enter Arabic Text
+                      {t('playground.enterArabic')}
                     </label>
                     <ArabicTextarea
                       value={customText}
@@ -194,7 +195,7 @@ export default function PlaygroundPage() {
                       className="min-h-[120px]"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Enter any Arabic text to analyze. Diacritics are handled automatically.
+                      {t('playground.enterHint')}
                     </p>
                   </div>
                 </TabsContent>
@@ -236,19 +237,19 @@ export default function PlaygroundPage() {
                       >
                         <Sparkles className="h-4 w-4" />
                       </motion.div>
-                      Analyzing...
+                      {t('playground.analyzing')}
                     </span>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Analyze
+                      {t('common.analyze')}
                     </>
                   )}
                 </Button>
 
                 <Button variant="outline" size="lg" onClick={handleReset}>
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset
+                  {t('common.reset')}
                 </Button>
               </div>
 
@@ -262,7 +263,7 @@ export default function PlaygroundPage() {
                   >
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                     <div>
-                      <p className="text-sm font-medium text-destructive">Analysis Failed</p>
+                      <p className="text-sm font-medium text-destructive">{t('playground.analysisFailed')}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{error}</p>
                     </div>
                   </motion.div>
@@ -280,7 +281,7 @@ export default function PlaygroundPage() {
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="flex items-center gap-2 text-sm font-medium">
                       <GitBranch className="h-4 w-4 text-gold-500" />
-                      Similar Verses
+                      {t('playground.similarVerses')}
                     </h3>
                     <Button
                       variant="outline"
@@ -288,7 +289,7 @@ export default function PlaygroundPage() {
                       onClick={handleFindSimilar}
                       disabled={isFindingSimilar}
                     >
-                      {isFindingSimilar ? 'Searching…' : 'Find Similar'}
+                      {isFindingSimilar ? t('playground.searching') : t('playground.findSimilar')}
                     </Button>
                   </div>
 
@@ -315,7 +316,7 @@ export default function PlaygroundPage() {
                                 {v.surah_number}:{v.verse_number}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {Math.round(v.similarity_score * 100)}% similar
+                                {Math.round(v.similarity_score * 100)}% {t('common.similarity')}
                               </span>
                             </span>
                           </button>

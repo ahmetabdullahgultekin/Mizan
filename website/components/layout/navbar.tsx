@@ -9,7 +9,9 @@ import { useTheme } from 'next-themes';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { navigationConfig } from '@/config/navigation';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Navbar Component
@@ -17,11 +19,22 @@ import { navigationConfig } from '@/config/navigation';
  * Main navigation bar with glassmorphism effect,
  * mobile menu, and theme toggle.
  */
+// Map href → translation key for nav items
+const navI18nKeys: Record<string, string> = {
+  '/': 'nav.home',
+  '/playground': 'nav.playground',
+  '/search': 'nav.search',
+  '/library': 'nav.library',
+  '/docs': 'nav.docs',
+  '/about': 'nav.about',
+};
+
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { t } = useI18n();
 
   // Handle scroll effect
   React.useEffect(() => {
@@ -75,7 +88,7 @@ export function Navbar() {
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                {item.title}
+                {navI18nKeys[item.href] ? t(navI18nKeys[item.href]) : item.title}
                 {pathname === item.href && (
                   <motion.div
                     layoutId="navbar-indicator"
@@ -89,6 +102,9 @@ export function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center space-x-2">
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -115,7 +131,7 @@ export function Navbar() {
 
             {/* CTA Button */}
             <Button variant="glow" size="sm" className="hidden sm:flex" asChild>
-              <Link href="/playground">Try Playground</Link>
+              <Link href="/playground">{t('hero.cta')}</Link>
             </Button>
 
             {/* Mobile Menu Button */}
@@ -180,7 +196,7 @@ export function Navbar() {
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       )}
                     >
-                      {item.title}
+                      {navI18nKeys[item.href] ? t(navI18nKeys[item.href]) : item.title}
                     </Link>
                   </motion.div>
                 ))}
@@ -193,7 +209,7 @@ export function Navbar() {
                   className="pt-2"
                 >
                   <Button variant="glow" className="w-full" asChild>
-                    <Link href="/playground">Try Playground</Link>
+                    <Link href="/playground">{t('hero.cta')}</Link>
                   </Button>
                 </motion.div>
               </div>

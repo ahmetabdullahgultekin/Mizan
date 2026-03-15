@@ -7,6 +7,7 @@ import { Search, Filter, BookOpen, Layers, Loader2, AlertCircle } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getApiClient } from '@/lib/api/client';
+import { useI18n } from '@/lib/i18n';
 import type { SemanticSearchResultResponse, SourceType } from '@/types/api';
 
 // ---------------------------------------------------------------------------
@@ -27,9 +28,11 @@ const SOURCE_TYPES: { value: SourceType; label: string; labelAr: string }[] = [
 function SearchResultCard({
   result,
   index,
+  similarityLabel,
 }: {
   result: SemanticSearchResultResponse;
   index: number;
+  similarityLabel: string;
 }) {
   const scorePercent = Math.round(result.similarity_score * 100);
   const scoreColor =
@@ -63,7 +66,7 @@ function SearchResultCard({
           <span className={`text-2xl font-bold tabular-nums ${scoreColor}`}>
             {scorePercent}%
           </span>
-          <p className="text-xs text-muted-foreground">similarity</p>
+          <p className="text-xs text-muted-foreground">{similarityLabel}</p>
         </div>
       </div>
 
@@ -84,6 +87,7 @@ function SearchResultCard({
 // ---------------------------------------------------------------------------
 
 export default function SearchPage() {
+  const { t } = useI18n();
   const [query, setQuery] = React.useState('');
   const [selectedTypes, setSelectedTypes] = React.useState<Set<SourceType>>(new Set());
   const [minSimilarity, setMinSimilarity] = React.useState(0.65);
@@ -110,7 +114,7 @@ export default function SearchPage() {
       });
       setResults(data);
     } catch {
-      setError('Search unavailable. Make sure the backend is running and embeddings are indexed.');
+      setError(t('search.searchUnavailable'));
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -138,14 +142,13 @@ export default function SearchPage() {
         >
           <div className="inline-flex items-center gap-2 rounded-full bg-gold-500/10 px-4 py-1.5 text-sm text-gold-500">
             <Search className="h-4 w-4" />
-            Semantic Search
+            {t('search.badge')}
           </div>
           <h1 className="text-4xl font-bold tracking-tight">
-            Search Islamic Texts
+            {t('search.title')}
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Find relevant passages by meaning — not just keywords. Search across Quran verses,
-            Tafsir, and Hadith collections using AI-powered semantic similarity.
+            {t('search.description')}
           </p>
         </motion.div>
 
@@ -164,7 +167,7 @@ export default function SearchPage() {
                     debounceRef.current = setTimeout(() => handleSearch(), 300);
                   }
                 }}
-                placeholder="Search by meaning… e.g. 'mercy and forgiveness' or 'الرحمة والمغفرة'"
+                placeholder={t('search.placeholder')}
                 dir="auto"
                 aria-label="Semantic search query"
                 className="w-full rounded-xl border bg-background pl-12 pr-4 py-3.5 text-base
@@ -180,7 +183,7 @@ export default function SearchPage() {
               {isSearching ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                'Search'
+                t('common.search')
               )}
             </Button>
           </div>
@@ -189,7 +192,7 @@ export default function SearchPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Filter className="h-4 w-4" />
-              Source:
+              {t('search.source')}
             </div>
             {SOURCE_TYPES.map(({ value, label, labelAr }) => (
               <button
@@ -208,7 +211,7 @@ export default function SearchPage() {
             ))}
 
             <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-              <label htmlFor="min-similarity">Min similarity:</label>
+              <label htmlFor="min-similarity">{t('search.minSimilarity')}</label>
               <input
                 id="min-similarity"
                 type="range"
@@ -240,7 +243,7 @@ export default function SearchPage() {
               className="flex items-center justify-center py-16 gap-3 text-muted-foreground"
             >
               <Loader2 className="h-6 w-6 animate-spin" />
-              <span>Searching across indexed texts…</span>
+              <span>{t('search.searching')}</span>
             </motion.div>
           )}
 
@@ -254,7 +257,7 @@ export default function SearchPage() {
             >
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-destructive">Search Failed</p>
+                <p className="font-medium text-destructive">{t('search.searchFailed')}</p>
                 <p className="text-sm text-muted-foreground mt-1">{error}</p>
               </div>
             </motion.div>
@@ -271,12 +274,12 @@ export default function SearchPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
                   {results.length > 0
-                    ? `${results.length} result${results.length !== 1 ? 's' : ''} found`
-                    : 'No results found'}
+                    ? t('search.resultsFound').replace('{count}', String(results.length))
+                    : t('search.noResults')}
                 </h2>
                 {results.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Sorted by similarity score
+                    {t('search.sortedBy')}
                   </p>
                 )}
               </div>
@@ -285,17 +288,17 @@ export default function SearchPage() {
                 <div className="rounded-xl border bg-card p-12 text-center space-y-3">
                   <BookOpen className="h-10 w-10 mx-auto text-muted-foreground/40" />
                   <p className="text-muted-foreground">
-                    No passages matched your query at {Math.round(minSimilarity * 100)}% similarity.
+                    {t('search.noResultsHint').replace('{percent}', String(Math.round(minSimilarity * 100)))}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Try lowering the minimum similarity or add more text sources in the{' '}
-                    <a href="/library" className="text-gold-500 underline">Library</a>.
+                    {t('search.noResultsAdvice')}{' '}
+                    <a href="/library" className="text-gold-500 underline">{t('search.library')}</a>.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {results.map((r, i) => (
-                    <SearchResultCard key={r.chunk_id} result={r} index={i} />
+                    <SearchResultCard key={r.chunk_id} result={r} index={i} similarityLabel={t('common.similarity')} />
                   ))}
                 </div>
               )}
@@ -312,10 +315,9 @@ export default function SearchPage() {
             >
               <Layers className="h-12 w-12 mx-auto text-muted-foreground/30" />
               <div className="space-y-2">
-                <p className="font-medium">Enter a query to search</p>
+                <p className="font-medium">{t('search.enterQuery')}</p>
                 <p className="text-sm text-muted-foreground">
-                  You can search in Arabic, Turkish, or English. The AI understands meaning — not
-                  just exact words.
+                  {t('search.searchHint')}
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 pt-2">
