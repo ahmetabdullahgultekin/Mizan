@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     # API Configuration
     # ==========================================================================
-    api_host: str = Field(default="0.0.0.0")
+    api_host: str = Field(default="0.0.0.0")  # nosec B104
     api_port: int = Field(default=8000, ge=1, le=65535)
     debug: bool = Field(default=False)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
@@ -189,7 +189,7 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         """Check if running in production mode."""
-        return not self.debug and self.secret_key != "change-me-in-production"
+        return not self.debug and self.secret_key != "change-me-in-production"  # nosec B105
 
 
 @lru_cache

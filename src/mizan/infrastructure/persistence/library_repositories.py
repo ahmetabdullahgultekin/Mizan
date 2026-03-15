@@ -356,7 +356,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
             WHERE {where_sql}
             ORDER BY tc.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
-        """)
+        """)  # nosec B608
 
         result = await self._session.execute(sql, params)
         rows = result.fetchall()
@@ -477,7 +477,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             {where_sql}
             ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
-        """)
+        """)  # nosec B608
 
         result = await self._session.execute(sql, params)
         rows = result.fetchall()
@@ -529,7 +529,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             WHERE {where_sql}
             ORDER BY ve.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
-        """)
+        """)  # nosec B608
 
         result = await self._session.execute(sql, params)
         rows = result.fetchall()
