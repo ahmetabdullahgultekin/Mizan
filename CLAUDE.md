@@ -10,19 +10,21 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 - **Islamic knowledge library** for managing and indexing Arabic text sources
 - **Interactive frontend** (Next.js) with Playground, Search, and Library pages
 
-## Current State (as of 2026-03-11)
+## Current State (as of 2026-03-15)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Backend API (analysis, verses) | ✅ Code complete | Verses table may be empty — run `ingest_tanzil.py` |
-| Semantic Search backend | ✅ Code complete | pgvector migration must be applied first |
-| Cascade Embedding Service | ✅ Complete | Gemini primary → local fallback |
-| Frontend Playground | ✅ Real API | Mock removed; calls `analyzeVerse()` + `calculateAbjad()` |
-| Frontend `/search` | ✅ Complete | Semantic search UI with filters and similarity slider |
+| Backend API (analysis, verses) | ✅ Production | 114 surahs, 6,236 verses ingested |
+| Semantic Search backend | ✅ Production | Quran verse search working (Arabic/Turkish/English) |
+| Verse Embeddings | ✅ Production | 6,236 vectors via intfloat/multilingual-e5-base (768d) |
+| Cascade Embedding Service | ✅ Complete | Local provider active; Gemini cascade optional |
+| Frontend Playground | ✅ Production | Shows verse text in results, letter/word/Abjad analysis |
+| Frontend `/search` | ✅ Production | Quran semantic search with source filters + similarity slider |
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
-| Quran data (verses table) | ⚠️ Script ready | Run `python scripts/ingest_tanzil.py` to populate |
-| Embeddings (verse_embeddings) | ⚠️ Script ready | Run `python scripts/embed_quran.py` after ingest |
+| Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
 | Morphology (MASAQ) | ❌ Not started | Future phase |
+| Library sources (Tafsir/Hadith) | ❌ Not ingested | text_chunks table empty until sources are added |
+| Website i18n (TR/AR) | ❌ Planned | Phase 7 — next-intl |
 
 ## Startup Sequence (Full Stack)
 
@@ -102,9 +104,18 @@ src/mizan/
 | `website/types/api.ts` | TypeScript types matching backend response shapes |
 | `website/config/navigation.ts` | Nav links (Home, Playground, Search, Library, Docs, About) |
 
+## Production Deployment
+
+- **API**: https://mizan-api.rollingcatsoftware.com (FastAPI, port 8000)
+- **Website**: https://mizan.rollingcatsoftware.com (Next.js standalone, port 3000)
+- **Server**: Hetzner VPS 116.203.222.213 (Docker + Traefik + auto-SSL)
+- **DB**: Shared PostgreSQL 17 with pgvector on 127.0.0.1:5432
+- **Cache**: Shared Redis 7.4 on 127.0.0.1:6379 (database 1)
+- **Deploy**: `/root/projects/infra/deploy.sh [build|restart|logs] mizan`
+
 ## Active Branch
 
-Development branch: `claude/review-project-todos-OIgd9`
+Main branch: `master`
 
 ## Key API Endpoints
 
