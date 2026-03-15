@@ -61,8 +61,11 @@ export default function PlaygroundPage() {
           abjad_value: raw.abjad.breakdown?.find((b) => b.letter === item.letter)?.abjad_value,
         }));
 
+        // Use the actual Arabic verse text from the analysis response
+        const verseText = raw.abjad?.text_analyzed || raw.location;
+
         setResult({
-          text: raw.location,
+          text: verseText,
           letter_count: raw.letters.count,
           word_count: raw.words.count,
           abjad_value: raw.abjad.value,

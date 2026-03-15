@@ -29,6 +29,29 @@ interface AnalysisResultsProps {
 export function AnalysisResults({ result, isLoading, className }: AnalysisResultsProps) {
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Analyzed Text Display */}
+      {result?.text && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-xl p-5 text-center"
+        >
+          {result.metadata?.surah && result.metadata?.ayah && (
+            <p className="mb-2 text-xs font-medium text-gold-500">
+              Surah {result.metadata.surah}, Ayah {result.metadata.ayah}
+            </p>
+          )}
+          <p
+            dir="rtl"
+            lang="ar"
+            className="text-xl leading-loose font-arabic md:text-2xl"
+            style={{ fontFamily: 'var(--font-amiri), serif' }}
+          >
+            {result.text}
+          </p>
+        </motion.div>
+      )}
+
       {/* Main Results */}
       <div className="grid gap-4 md:grid-cols-3">
         <ResultCard
