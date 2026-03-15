@@ -70,7 +70,21 @@
     "letterDistribution": "Harf Dagilimi",
     "similarVerses": "Benzer Ayetler",
     "findSimilar": "Benzerlerini Bul",
-    "searching": "Araniyor..."
+    "searching": "Araniyor...",
+    "loadingVerse": "Ayet yukleniyor...",
+    "verseNotFound": "Ayet bulunamadi",
+    "juz": "Cuz",
+    "page": "Sayfa",
+    "wordsCount": "kelime",
+    "lettersCount": "harf",
+    "scrollToExplore": "Kesfetmek icin kaydir",
+    "totalVerses": "Toplam Ayet",
+    "surahs": "Sure",
+    "basmalahAbjad": "Besmele Ebced",
+    "accuracy": "Dogruluk %",
+    "tipBasmalah": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ analiz edin — 19 harf ve 786 Ebced degeri.",
+    "tipAllah": "الله kelimesinin Masriki sistemde Ebced degeri 66'dir.",
+    "tipMuhammad": "محمد isminin Ebced degeri 92'dir."
   },
   "search": {
     "title": "Islami Metinlerde Ara",

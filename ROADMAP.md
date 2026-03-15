@@ -31,13 +31,17 @@
 ### Website Features
 
 - [x] i18n support: Turkish and Arabic UI translations (client-side, en/tr/ar + RTL)
+- [x] Playground: Translate all remaining hard-coded English strings (verse selector, hero stats, tip cards)
+- [x] Playground: Similar verse cards show Arabic verse text, surah name, clickable navigation
 - [ ] Multi-verse playground: surah dropdown + verse multi-select
+- [ ] Landing page: Translate remaining hard-coded strings in features/stats/demo/CTA sections
 - [x] Fix remaining TypeScript build errors (tsc --noEmit passes cleanly)
 
 ### Data & AI
 
-- [ ] Ingest library sources: Tafsir texts for semantic search
-- [ ] Ingest library sources: Hadith collections for semantic search
+- [x] Ingest library sources: Tafsir Ibn Kathir (1,988 chunks via `scripts/ingest_tafsir.py`)
+- [x] Ingest library sources: Hadith Kutub al-Sittah (34,516 chunks via `scripts/ingest_hadith.py`)
+- [ ] Library embeddings: 7,876/36,504 embedded (Tafsir done, Hadith in progress via `scripts/embed_library.py`)
 - [ ] Gemini embedding cascade (primary) with local model fallback
 - [ ] MASAQ morphology data ingestion
 
@@ -51,5 +55,6 @@
 
 ## Known Behaviors
 
-- Library text_chunks semantic search returns empty results until Tafsir/Hadith sources are ingested. Quran verse search works.
+- Library text_chunks: Tafsir Ibn Kathir (1,988 chunks, fully embedded) + Kutub al-Sittah hadith (34,516 chunks, embedding in progress). Semantic search returns results from all embedded sources.
+- Embedding runs via `embed_library.py` inside the mizan-api container (~10 chunks/s on CPU, auto-recoverable with frequent commits).
 - `lockdown-install.js SES` warning in browser console is from browser extensions (MetaMask/Brave), not Mizan code.

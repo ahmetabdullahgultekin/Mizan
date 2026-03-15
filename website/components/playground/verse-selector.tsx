@@ -229,7 +229,7 @@ export function VerseSelector({
             {isLoadingPreview ? (
               <div className="flex items-center justify-center py-3 text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-sm">Loading verse...</span>
+                <span className="text-sm">{t('playground.loadingVerse')}</span>
               </div>
             ) : versePreview ? (
               <div className="space-y-2">
@@ -250,15 +250,15 @@ export function VerseSelector({
                   {versePreview.text_uthmani}
                 </p>
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  <span>Juz {versePreview.juz_number}</span>
-                  <span>Page {versePreview.page_number}</span>
-                  <span>{versePreview.word_count} words</span>
-                  <span>{versePreview.letter_count} letters</span>
+                  <span>{t('playground.juz')} {versePreview.juz_number}</span>
+                  <span>{t('playground.page')} {versePreview.page_number}</span>
+                  <span>{versePreview.word_count} {t('playground.wordsCount')}</span>
+                  <span>{versePreview.letter_count} {t('playground.lettersCount')}</span>
                 </div>
               </div>
             ) : (
               <p className="text-center text-sm text-muted-foreground">
-                Verse not found
+                {t('playground.verseNotFound')}
               </p>
             )}
           </motion.div>

@@ -70,7 +70,21 @@
     "letterDistribution": "توزيع الحروف",
     "similarVerses": "آيات مشابهة",
     "findSimilar": "ابحث عن المشابهة",
-    "searching": "جارٍ البحث..."
+    "searching": "جارٍ البحث...",
+    "loadingVerse": "جارٍ تحميل الآية...",
+    "verseNotFound": "الآية غير موجودة",
+    "juz": "الجزء",
+    "page": "الصفحة",
+    "wordsCount": "كلمة",
+    "lettersCount": "حرف",
+    "scrollToExplore": "مرر للاستكشاف",
+    "totalVerses": "إجمالي الآيات",
+    "surahs": "السور",
+    "basmalahAbjad": "أبجدية البسملة",
+    "accuracy": "الدقة %",
+    "tipBasmalah": "حلّل بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ — ١٩ حرفاً وقيمة أبجدية ٧٨٦.",
+    "tipAllah": "كلمة الله لها قيمة أبجدية ٦٦ في النظام المشرقي.",
+    "tipMuhammad": "اسم محمد له قيمة أبجدية ٩٢."
   },
   "search": {
     "title": "البحث في النصوص الإسلامية",

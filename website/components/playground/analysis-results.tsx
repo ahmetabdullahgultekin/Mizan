@@ -40,7 +40,7 @@ export function AnalysisResults({ result, isLoading, className }: AnalysisResult
         >
           {result.metadata?.surah && result.metadata?.ayah && (
             <p className="mb-2 text-xs font-medium text-gold-500">
-              Surah {result.metadata.surah}, Ayah {result.metadata.ayah}
+              {t('playground.surah')} {result.metadata.surah}, {t('playground.ayah')} {result.metadata.ayah}
             </p>
           )}
           <p

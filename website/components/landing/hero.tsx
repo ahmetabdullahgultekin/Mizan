@@ -106,10 +106,10 @@ export function Hero() {
             variants={itemVariants}
             className="grid grid-cols-2 gap-4 md:grid-cols-4"
           >
-            <StatItem value={6236} label="Total Verses" />
-            <StatItem value={114} label="Surahs" />
-            <StatItem value={786} label="Basmalah Abjad" suffix="" />
-            <StatItem value={99} label="Accuracy %" suffix="%" />
+            <StatItem value={6236} label={t('playground.totalVerses')} />
+            <StatItem value={114} label={t('playground.surahs')} />
+            <StatItem value={786} label={t('playground.basmalahAbjad')} suffix="" />
+            <StatItem value={99} label={t('playground.accuracy')} suffix="%" />
           </motion.div>
         </motion.div>
       </div>
@@ -126,7 +126,7 @@ export function Hero() {
           transition={{ duration: 1.5, repeat: Infinity }}
           className="flex flex-col items-center text-muted-foreground"
         >
-          <span className="mb-2 text-xs">Scroll to explore</span>
+          <span className="mb-2 text-xs">{t('playground.scrollToExplore')}</span>
           <div className="flex h-8 w-5 items-start justify-center rounded-full border-2 border-muted-foreground/30 pt-1">
             <motion.div
               animate={prefersReducedMotion ? {} : { y: [0, 10, 0] }}

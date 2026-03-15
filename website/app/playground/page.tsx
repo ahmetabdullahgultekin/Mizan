@@ -301,25 +301,19 @@ export default function PlaygroundPage() {
                         className="space-y-2"
                       >
                         {similarVerses.map((v) => (
-                          <button
+                          <SimilarVerseCard
                             key={`${v.surah_number}:${v.verse_number}`}
+                            surahNumber={v.surah_number}
+                            verseNumber={v.verse_number}
+                            similarityScore={v.similarity_score}
+                            similarityLabel={t('common.similarity')}
                             onClick={() => {
                               setSelectedSurah(v.surah_number);
                               setSelectedAyah(v.verse_number);
                               setSimilarVerses([]);
                               setResult(null);
                             }}
-                            className="w-full rounded-lg border p-3 text-left transition-colors hover:border-gold-500/40"
-                          >
-                            <span className="flex items-center justify-between">
-                              <span className="text-sm font-mono">
-                                {v.surah_number}:{v.verse_number}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {Math.round(v.similarity_score * 100)}% {t('common.similarity')}
-                              </span>
-                            </span>
-                          </button>
+                          />
                         ))}
                       </motion.div>
                     )}
@@ -336,24 +330,82 @@ export default function PlaygroundPage() {
             className="mt-8 grid gap-4 md:grid-cols-3"
           >
             <TipCard
-              title="Basmalah"
-              description="Try analyzing بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ - it has 19 letters and Abjad value of 786."
+              title="بِسْمِ اللَّهِ"
+              description={t('playground.tipBasmalah')}
               onClick={() => setCustomText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ')}
             />
             <TipCard
-              title="Allah"
-              description="The word الله has an Abjad value of 66 in the Mashriqi system."
+              title="الله"
+              description={t('playground.tipAllah')}
               onClick={() => setCustomText('الله')}
             />
             <TipCard
-              title="Muhammad"
-              description="The name محمد has an Abjad value of 92."
+              title="محمد"
+              description={t('playground.tipMuhammad')}
               onClick={() => setCustomText('محمد')}
             />
           </motion.div>
         </div>
       </div>
     </div>
+  );
+}
+
+function SimilarVerseCard({
+  surahNumber,
+  verseNumber,
+  similarityScore,
+  similarityLabel,
+  onClick,
+}: {
+  surahNumber: number;
+  verseNumber: number;
+  similarityScore: number;
+  similarityLabel: string;
+  onClick: () => void;
+}) {
+  const [verseText, setVerseText] = React.useState<string | null>(null);
+  const [surahName, setSurahName] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getApiClient()
+      .getVerse(surahNumber, verseNumber)
+      .then((v) => {
+        if (!cancelled) {
+          setVerseText(v.text_uthmani);
+          setSurahName(v.surah_name_arabic);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [surahNumber, verseNumber]);
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-lg border p-3 text-left transition-colors hover:border-gold-500/40 hover:bg-gold-500/5"
+    >
+      <span className="flex items-center justify-between mb-1">
+        <span className="text-sm font-mono text-gold-500">
+          {surahName && <span className="font-arabic mr-2">{surahName}</span>}
+          {surahNumber}:{verseNumber}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {Math.round(similarityScore * 100)}% {similarityLabel}
+        </span>
+      </span>
+      {verseText && (
+        <p
+          dir="rtl"
+          lang="ar"
+          className="text-sm leading-relaxed text-muted-foreground font-arabic line-clamp-2"
+          style={{ fontFamily: 'var(--font-amiri), serif' }}
+        >
+          {verseText}
+        </p>
+      )}
+    </button>
   );
 }
 

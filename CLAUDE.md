@@ -23,7 +23,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
 | Morphology (MASAQ) | ❌ Not started | Future phase |
-| Library sources (Tafsir/Hadith) | ❌ Not ingested | text_chunks table empty until sources are added |
+| Library sources (Tafsir/Hadith) | 🔧 Scripts ready | Run ingest_tafsir.py / ingest_hadith.py to populate |
 | Website i18n (TR/AR) | ✅ Complete | Client-side: en/tr/ar + RTL + language switcher |
 
 ## Startup Sequence (Full Stack)
@@ -41,10 +41,14 @@ python scripts/ingest_tanzil.py
 # 4. Generate verse embeddings (~5 min on CPU)
 python scripts/embed_quran.py
 
-# 5. Start API server
+# 5. Ingest Tafsir + Hadith (optional, ~30 min on CPU)
+python scripts/ingest_tafsir.py          # Ibn Kathir from quran.com API
+python scripts/ingest_hadith.py          # Kutub al-Sittah from hadith-api
+
+# 6. Start API server
 uvicorn mizan.api.main:app --reload --host 0.0.0.0 --port 8000
 
-# 6. Start frontend (separate terminal)
+# 7. Start frontend (separate terminal)
 cd website && npm run dev
 ```
 
@@ -100,6 +104,8 @@ src/mizan/
 | `alembic/versions/` | Database migrations — apply with `alembic upgrade head` |
 | `scripts/ingest_tanzil.py` | Populate surahs + verses tables from Tanzil XML |
 | `scripts/embed_quran.py` | Generate verse embeddings into verse_embeddings table |
+| `scripts/ingest_tafsir.py` | Ingest Tafsir Ibn Kathir from quran.com API into text_chunks |
+| `scripts/ingest_hadith.py` | Ingest Hadith collections (Bukhari, Muslim, etc.) into text_chunks |
 | `website/lib/api/client.ts` | Frontend API client — all backend calls go here |
 | `website/types/api.ts` | TypeScript types matching backend response shapes |
 | `website/config/navigation.ts` | Nav links (Home, Playground, Search, Library, Docs, About) |
