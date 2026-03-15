@@ -1,0 +1,92 @@
+services:
+  mizan-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: mizan-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@shared-postgres:5432/mizan
+      REDIS_URL: redis://:${REDIS_PASSWORD}@shared-redis:6379/1
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      LOG_LEVEL: INFO
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_ORIGINS: '["https://mizan.rollingcatsoftware.com"]'
+      API_KEY: ${API_KEY}
+      FAIL_ON_INTEGRITY_ERROR: "true"
+      TANZIL_DATA_PATH: /app/data/tanzil
+      MASAQ_DATA_PATH: /app/data/masaq
+      DB_POOL_SIZE: 10
+      DB_MAX_OVERFLOW: 20
+      REDIS_POOL_SIZE: 10
+      CACHE_TTL: 3600
+      ENABLE_SEMANTIC_ANALYSIS: "true"
+      ENABLE_STRUCTURAL_TOOLS: "false"
+      EMBEDDING_PROVIDER: local
+      EMBEDDING_MODEL: intfloat/multilingual-e5-base
+      EMBEDDING_DIMENSION: 768
+      EMBEDDING_BATCH_SIZE: 32
+    volumes:
+      - ./data:/app/data:ro
+      - mizan-hf-cache:/app/.cache/huggingface
+    networks:
+      - backend
+      - proxy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mizan-api.rule=Host(`mizan-api.rollingcatsoftware.com`)"
+      - "traefik.http.routers.mizan-api.entrypoints=websecure"
+      - "traefik.http.routers.mizan-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mizan-api.middlewares=secure-headers@file"
+      - "traefik.http.services.mizan-api.loadbalancer.server.port=8000"
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+
+  mizan-website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+      args:
+        DOCKER_BUILD: "true"
+        NEXT_PUBLIC_API_URL: https://mizan-api.rollingcatsoftware.com
+        NEXT_PUBLIC_SITE_URL: https://mizan.rollingcatsoftware.com
+    container_name: mizan-website
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: https://mizan-api.rollingcatsoftware.com
+      NEXT_PUBLIC_SITE_URL: https://mizan.rollingcatsoftware.com
+      NODE_ENV: production
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mizan-web.rule=Host(`mizan.rollingcatsoftware.com`)"
+      - "traefik.http.routers.mizan-web.entrypoints=websecure"
+      - "traefik.http.routers.mizan-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.mizan-web.middlewares=secure-headers@file"
+      - "traefik.http.services.mizan-web.loadbalancer.server.port=3000"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  mizan-hf-cache:
+
+networks:
+  backend:
+    name: backend
+    external: true
+  proxy:
+    name: proxy
+    external: true

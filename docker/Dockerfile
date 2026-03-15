@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY pyproject.toml README.md ./
-RUN pip install --no-cache-dir build && \
-    pip wheel --no-cache-dir --wheel-dir /app/wheels -e .
+# Install CPU-only PyTorch first (saves ~1.5GB vs full CUDA), then project deps
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir sentence-transformers && \
+    pip install --no-cache-dir -e .
 
 # Production stage
 FROM python:3.11-slim
@@ -20,10 +22,9 @@ WORKDIR /app
 # Create non-root user for security
 RUN groupadd -r mizan && useradd -r -g mizan mizan
 
-# Install runtime dependencies only
-COPY --from=builder /app/wheels /app/wheels
-RUN pip install --no-cache-dir --no-index --find-links=/app/wheels mizan && \
-    rm -rf /app/wheels
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY src/ src/
@@ -35,6 +36,10 @@ COPY data/ data/
 
 # Set PYTHONPATH to include src directory
 ENV PYTHONPATH=/app/src
+
+# Create writable cache dir for HuggingFace model downloads
+RUN mkdir -p /app/.cache/huggingface
+ENV HF_HOME=/app/.cache/huggingface
 
 # Set ownership
 RUN chown -R mizan:mizan /app

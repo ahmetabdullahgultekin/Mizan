@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -18,7 +18,11 @@ COPY . .
 
 # Environment variables for build
 ARG DOCKER_BUILD=true
+ARG NEXT_PUBLIC_API_URL=https://mizan-api.rollingcatsoftware.com
+ARG NEXT_PUBLIC_SITE_URL=https://mizan.rollingcatsoftware.com
 ENV DOCKER_BUILD=${DOCKER_BUILD}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
