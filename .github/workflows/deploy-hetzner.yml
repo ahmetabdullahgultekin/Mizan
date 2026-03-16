@@ -33,9 +33,9 @@ jobs:
           command_timeout: 8m
           script: |
             set -e
-            cd /root/projects/Mizan
+            cd /opt/projects/Mizan
             git pull origin master
-            cd /root/projects
+            cd /opt/projects
             ./infra/deploy.sh build mizan
             ./infra/deploy.sh restart mizan
             # Health check with retries (API loads ML model on startup)
