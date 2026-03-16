@@ -91,9 +91,7 @@ class LibraryService:
         source_type: SourceType | None = None,
     ) -> list[TextSource]:
         """List all sources in a library space."""
-        return await self._sources.get_by_space(
-            space_id, source_type=source_type
-        )
+        return await self._sources.get_by_space(space_id, source_type=source_type)
 
     async def delete_source(self, source_id: UUID) -> bool:
         """Delete a source and all its chunks."""

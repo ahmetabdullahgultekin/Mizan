@@ -154,6 +154,7 @@ async def verse_embedding_stats(
     from mizan.infrastructure.persistence.library_repositories import (
         PostgresVerseEmbeddingRepository,
     )
+
     repo = PostgresVerseEmbeddingRepository(session)
     count = await repo.get_total_count(model_name=model_name)
     return VerseEmbeddingStatsResponse(

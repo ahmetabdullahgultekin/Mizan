@@ -26,10 +26,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 try:
     from pgvector.sqlalchemy import Vector
+
     _PGVECTOR_AVAILABLE = True
 except ImportError:
     # Fallback: store as JSON if pgvector not installed — vector search will NOT work
     from sqlalchemy import JSON as Vector
+
     _PGVECTOR_AVAILABLE = False
     warnings.warn(
         "pgvector is not installed. Embedding columns will use JSON storage "
@@ -81,9 +83,7 @@ class SurahModel(Base):
     checksum: Mapped[str] = mapped_column(String(128), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -114,14 +114,10 @@ class VerseModel(Base):
     __tablename__ = "verses"
 
     # Primary key
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
 
     # Location (composite unique)
-    surah_number: Mapped[int] = mapped_column(
-        Integer, ForeignKey("surahs.id"), nullable=False
-    )
+    surah_number: Mapped[int] = mapped_column(Integer, ForeignKey("surahs.id"), nullable=False)
     verse_number: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Text content (multiple scripts)
@@ -160,9 +156,7 @@ class VerseModel(Base):
     checksum: Mapped[str] = mapped_column(String(128), nullable=False)
 
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
     surah: Mapped["SurahModel"] = relationship("SurahModel", back_populates="verses")
@@ -270,23 +264,17 @@ class LibrarySpaceModel(Base):
 
     __tablename__ = "library_spaces"
 
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
     sources: Mapped[list["TextSourceModel"]] = relationship(
         "TextSourceModel", back_populates="library_space", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (
-        Index("ix_library_spaces_name", "name"),
-    )
+    __table_args__ = (Index("ix_library_spaces_name", "name"),)
 
     def __repr__(self) -> str:
         return f"<LibrarySpace {self.id}: {self.name}>"
@@ -302,15 +290,11 @@ class TextSourceModel(Base):
 
     __tablename__ = "text_sources"
 
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     library_space_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("library_spaces.id"), nullable=False
     )
-    source_type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # SourceType enum value
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False)  # SourceType enum value
     title_arabic: Mapped[str] = mapped_column(String(500), nullable=False)
     title_turkish: Mapped[str | None] = mapped_column(String(500), nullable=True)
     title_english: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -321,9 +305,7 @@ class TextSourceModel(Base):
     total_chunks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     indexed_chunks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     embedding_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -357,9 +339,7 @@ class TextChunkModel(Base):
 
     __tablename__ = "text_chunks"
 
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     text_source_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("text_sources.id"), nullable=False
     )
@@ -368,20 +348,14 @@ class TextChunkModel(Base):
     reference: Mapped[str] = mapped_column(String(200), nullable=False)
     # pgvector VECTOR(768) column for semantic embeddings
     # Using 768 dimensions (intfloat/multilingual-e5-base output size)
-    embedding: Mapped[list[float] | None] = mapped_column(
-        Vector(768), nullable=True
-    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     metadata_: Mapped[dict[str, object]] = mapped_column(
         "metadata", JSONB, nullable=False, default=dict
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    source: Mapped["TextSourceModel"] = relationship(
-        "TextSourceModel", back_populates="chunks"
-    )
+    source: Mapped["TextSourceModel"] = relationship("TextSourceModel", back_populates="chunks")
 
     __table_args__ = (
         Index("ix_text_chunks_source", "text_source_id"),
@@ -405,9 +379,7 @@ class VerseEmbeddingModel(Base):
 
     __tablename__ = "verse_embeddings"
 
-    id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
-    )
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     verse_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("verses.id"), nullable=False
     )
@@ -415,9 +387,7 @@ class VerseEmbeddingModel(Base):
     verse_number: Mapped[int] = mapped_column(Integer, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
     model_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
     verse: Mapped["VerseModel"] = relationship("VerseModel")

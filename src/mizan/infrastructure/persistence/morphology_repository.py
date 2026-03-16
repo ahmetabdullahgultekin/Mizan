@@ -127,10 +127,6 @@ class PostgresMorphologyRepository(IMorphologyRepository):
         return {row[0]: row[1] for row in result.all() if row[0]}
 
     async def get_unique_roots(self) -> set[str]:
-        stmt = (
-            select(MorphologyModel.root)
-            .where(MorphologyModel.root.isnot(None))
-            .distinct()
-        )
+        stmt = select(MorphologyModel.root).where(MorphologyModel.root.isnot(None)).distinct()
         result = await self._session.execute(stmt)
         return {row[0] for row in result.all() if row[0]}

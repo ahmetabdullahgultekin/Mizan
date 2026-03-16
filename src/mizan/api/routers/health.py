@@ -52,7 +52,9 @@ async def health_check(
             logger.warning("embedding_service_health_check_failed")
 
     embedding_healthy = embedding_ok is None or embedding_ok
-    overall_status = "healthy" if (db_healthy and cache_healthy and embedding_healthy) else "degraded"
+    overall_status = (
+        "healthy" if (db_healthy and cache_healthy and embedding_healthy) else "degraded"
+    )
 
     return HealthResponse(
         status=overall_status,

@@ -217,8 +217,9 @@ class AnalyzerService:
             raise ValueError("verse_number requires surah_number")
 
         analysis_text = (
-            text if text is not None else
-            await self._get_text(surah_number, verse_number, script_type)
+            text
+            if text is not None
+            else await self._get_text(surah_number, verse_number, script_type)
         )
 
         letter_count = self._letter_counter.count_letters(
@@ -251,12 +252,14 @@ class AnalyzerService:
             breakdown: list[dict[str, Any]] = []
             for letter, count in sorted(frequency.items(), key=lambda item: item[1], reverse=True):
                 percentage = (count / total_letters * 100) if total_letters else 0.0
-                breakdown.append({
-                    "letter": letter,
-                    "count": count,
-                    "percentage": round(percentage, 2),
-                    "abjad_value": self._abjad_calculator.get_value(letter, abjad_system),
-                })
+                breakdown.append(
+                    {
+                        "letter": letter,
+                        "count": count,
+                        "percentage": round(percentage, 2),
+                        "abjad_value": self._abjad_calculator.get_value(letter, abjad_system),
+                    }
+                )
             result["breakdown"] = breakdown
 
         return result
@@ -361,12 +364,14 @@ class AnalyzerService:
 
         results = []
         for verse in verses[:limit]:
-            results.append({
-                "surah_number": verse.surah_number,
-                "verse_number": verse.verse_number,
-                "text": verse.text_uthmani,
-                "surah_name": verse.surah_metadata.name_arabic,
-            })
+            results.append(
+                {
+                    "surah_number": verse.surah_number,
+                    "verse_number": verse.verse_number,
+                    "text": verse.text_uthmani,
+                    "surah_name": verse.surah_metadata.name_arabic,
+                }
+            )
 
         return {
             "query": query,

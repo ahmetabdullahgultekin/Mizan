@@ -82,10 +82,7 @@ class SemanticSearchService:
             if source_types is not None
             else None
         )
-        search_library = (
-            source_types is None
-            or bool(non_quran_types)
-        )
+        search_library = source_types is None or bool(non_quran_types)
 
         all_results: list[SemanticSearchResult] = []
 
@@ -184,9 +181,7 @@ class SemanticSearchService:
             verse_number=verse_number,
         )
         if verse_emb is None:
-            raise ValueError(
-                f"No embedding found for verse {surah_number}:{verse_number}."
-            )
+            raise ValueError(f"No embedding found for verse {surah_number}:{verse_number}.")
 
         return await self._chunks.semantic_search(
             query_embedding=verse_emb.embedding,

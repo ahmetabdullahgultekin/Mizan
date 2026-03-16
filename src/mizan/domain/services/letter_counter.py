@@ -24,8 +24,7 @@ class LetterCounter:
 
     # Base Arabic letters (28 letters of the Arabic alphabet)
     ARABIC_LETTERS: Final[frozenset[str]] = frozenset(
-        "ابتثجحخدذرزسشصضطظعغفقكلمنهوي"
-        "ءآأؤإئى"  # Hamza variants and Alif Maqsura
+        "ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأؤإئى"  # Hamza variants and Alif Maqsura
     )
 
     # Alif Wasla - used in Uthmani script for definite article
@@ -38,22 +37,24 @@ class LetterCounter:
     COUNTABLE_SPECIAL: Final[frozenset[str]] = frozenset([ALIF_WASLA, ALIF_KHANJARIYYA])
 
     # Tashkeel (diacritical marks) - NOT counted as letters
-    TASHKEEL: Final[frozenset[str]] = frozenset([
-        "\u064B",  # Fathatan ً
-        "\u064C",  # Dammatan ٌ
-        "\u064D",  # Kasratan ٍ
-        "\u064E",  # Fatha َ
-        "\u064F",  # Damma ُ
-        "\u0650",  # Kasra ِ
-        "\u0651",  # Shadda ّ
-        "\u0652",  # Sukun ْ
-        "\u0653",  # Maddah ٓ
-        "\u0654",  # Hamza above ٔ
-        "\u0655",  # Hamza below ٕ
-        "\u0656",  # Subscript Alef ٖ
-        "\u0657",  # Inverted Damma ٗ
-        "\u0658",  # Noon Ghunna ٘
-    ])
+    TASHKEEL: Final[frozenset[str]] = frozenset(
+        [
+            "\u064b",  # Fathatan ً
+            "\u064c",  # Dammatan ٌ
+            "\u064d",  # Kasratan ٍ
+            "\u064e",  # Fatha َ
+            "\u064f",  # Damma ُ
+            "\u0650",  # Kasra ِ
+            "\u0651",  # Shadda ّ
+            "\u0652",  # Sukun ْ
+            "\u0653",  # Maddah ٓ
+            "\u0654",  # Hamza above ٔ
+            "\u0655",  # Hamza below ٕ
+            "\u0656",  # Subscript Alef ٖ
+            "\u0657",  # Inverted Damma ٗ
+            "\u0658",  # Noon Ghunna ٘
+        ]
+    )
 
     # Tatweel (kashida) - stretching character, NOT a letter
     TATWEEL: Final[str] = "\u0640"  # ـ
@@ -117,17 +118,16 @@ class LetterCounter:
             # TRADITIONAL: Include Wasla (as Alif), exclude Khanjariyya
             # Verified: Al-Fatiha = 139 letters (scholarly consensus)
             LetterCountMethod.TRADITIONAL: (True, False),
-
             # UTHMANI_FULL: Include all Alif variants
             # Al-Fatiha = 145 letters with this method
             LetterCountMethod.UTHMANI_FULL: (True, True),
-
             # NO_WASLA: Base letters only (for simple text analysis)
             # Use this when working with simple/imlai text
             LetterCountMethod.NO_WASLA: (False, False),
         }
         include_wasla, include_khanjariyya = method_rules.get(
-            method, (True, False)  # Default to TRADITIONAL
+            method,
+            (True, False),  # Default to TRADITIONAL
         )
 
         # Apply explicit overrides if provided
@@ -247,6 +247,5 @@ class LetterCounter:
         Removes diacritics, spaces, punctuation - returns only letters.
         """
         return "".join(
-            char for char in text
-            if char in self.ARABIC_LETTERS or char in self.COUNTABLE_SPECIAL
+            char for char in text if char in self.ARABIC_LETTERS or char in self.COUNTABLE_SPECIAL
         )

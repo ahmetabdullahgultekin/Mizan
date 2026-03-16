@@ -47,20 +47,30 @@ class WordCounter:
     """
 
     # Arabic word separators
-    WORD_SEPARATORS: Final[frozenset[str]] = frozenset([
-        " ",       # Space
-        "\u00A0",  # Non-breaking space
-        "\u200B",  # Zero-width space (used in some texts)
-    ])
+    WORD_SEPARATORS: Final[frozenset[str]] = frozenset(
+        [
+            " ",  # Space
+            "\u00a0",  # Non-breaking space
+            "\u200b",  # Zero-width space (used in some texts)
+        ]
+    )
 
     # Characters that are NOT part of words
-    NON_WORD_CHARS: Final[frozenset[str]] = frozenset([
-        "\u06DD",  # End of Ayah mark ۝
-        "\u06DE",  # Start of Rub El Hizb ۞
-        "\u06E9",  # Place of Sajdah ۩
-        # Waqf (pause) signs
-        "ۖ", "ۗ", "ۘ", "ۙ", "ۚ", "ۛ", "ۜ",
-    ])
+    NON_WORD_CHARS: Final[frozenset[str]] = frozenset(
+        [
+            "\u06dd",  # End of Ayah mark ۝
+            "\u06de",  # Start of Rub El Hizb ۞
+            "\u06e9",  # Place of Sajdah ۩
+            # Waqf (pause) signs
+            "ۖ",
+            "ۗ",
+            "ۘ",
+            "ۙ",
+            "ۚ",
+            "ۛ",
+            "ۜ",
+        ]
+    )
 
     def count_words(
         self,

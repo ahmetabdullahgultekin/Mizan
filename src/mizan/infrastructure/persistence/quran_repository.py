@@ -71,9 +71,7 @@ class PostgresQuranRepository(IQuranRepository):
             for qiraat_key, scripts in model.qiraat_variants.items():
                 try:
                     qiraat = QiraatType(qiraat_key)
-                    qiraat_variants[qiraat] = {
-                        ScriptType(k): v for k, v in scripts.items()
-                    }
+                    qiraat_variants[qiraat] = {ScriptType(k): v for k, v in scripts.items()}
                 except ValueError:
                     logger.warning(
                         "unknown_qiraat_variant",
@@ -205,9 +203,8 @@ class PostgresQuranRepository(IQuranRepository):
         self,
         surah_number: int | None = None,
     ) -> AsyncIterator[Verse]:
-        stmt = (
-            select(VerseModel, SurahModel)
-            .join(SurahModel, VerseModel.surah_number == SurahModel.id)
+        stmt = select(VerseModel, SurahModel).join(
+            SurahModel, VerseModel.surah_number == SurahModel.id
         )
         if surah_number is not None:
             stmt = stmt.where(VerseModel.surah_number == surah_number)
@@ -232,9 +229,8 @@ class PostgresQuranRepository(IQuranRepository):
         manzil_number: int | None = None,
         has_sajdah: bool | None = None,
     ) -> list[Verse]:
-        stmt = (
-            select(VerseModel, SurahModel)
-            .join(SurahModel, VerseModel.surah_number == SurahModel.id)
+        stmt = select(VerseModel, SurahModel).join(
+            SurahModel, VerseModel.surah_number == SurahModel.id
         )
         if revelation_type is not None:
             stmt = stmt.where(SurahModel.revelation_type == revelation_type.value)
@@ -256,9 +252,8 @@ class PostgresQuranRepository(IQuranRepository):
         surah_number: int | None = None,
         case_sensitive: bool = False,
     ) -> list[Verse]:
-        stmt = (
-            select(VerseModel, SurahModel)
-            .join(SurahModel, VerseModel.surah_number == SurahModel.id)
+        stmt = select(VerseModel, SurahModel).join(
+            SurahModel, VerseModel.surah_number == SurahModel.id
         )
         search_field = VerseModel.text_normalized_full
         if case_sensitive:
@@ -280,9 +275,8 @@ class PostgresQuranRepository(IQuranRepository):
             if not verse.verify_integrity():
                 failed_verses.append(verse.location)
 
-        all_text_stmt = (
-            select(VerseModel.text_uthmani)
-            .order_by(VerseModel.surah_number, VerseModel.verse_number)
+        all_text_stmt = select(VerseModel.text_uthmani).order_by(
+            VerseModel.surah_number, VerseModel.verse_number
         )
         result = await self._session.execute(all_text_stmt)
         all_text = "\n".join(row[0] for row in result.all())

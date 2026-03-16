@@ -29,26 +29,28 @@ class ArabicNormalizer:
     }
 
     # Tashkeel (diacritical marks) - vowels and other marks
-    TASHKEEL: Final[frozenset[str]] = frozenset([
-        "\u064B",  # Fathatan ً
-        "\u064C",  # Dammatan ٌ
-        "\u064D",  # Kasratan ٍ
-        "\u064E",  # Fatha َ
-        "\u064F",  # Damma ُ
-        "\u0650",  # Kasra ِ
-        "\u0651",  # Shadda ّ
-        "\u0652",  # Sukun ْ
-        "\u0653",  # Maddah above ٓ
-        "\u0654",  # Hamza above ٔ
-        "\u0655",  # Hamza below ٕ
-        "\u0656",  # Subscript Alef ٖ
-        "\u0657",  # Inverted Damma ٗ
-        "\u0658",  # Mark Noon Ghunna ٘
-        "\u065C",  # Vowel Sign Dot Below
-        "\u065D",  # Reversed Damma
-        "\u065E",  # Fatha with Two Dots
-        "\u0670",  # Superscript Alef (Alif Khanjariyya) ـٰ
-    ])
+    TASHKEEL: Final[frozenset[str]] = frozenset(
+        [
+            "\u064b",  # Fathatan ً
+            "\u064c",  # Dammatan ٌ
+            "\u064d",  # Kasratan ٍ
+            "\u064e",  # Fatha َ
+            "\u064f",  # Damma ُ
+            "\u0650",  # Kasra ِ
+            "\u0651",  # Shadda ّ
+            "\u0652",  # Sukun ْ
+            "\u0653",  # Maddah above ٓ
+            "\u0654",  # Hamza above ٔ
+            "\u0655",  # Hamza below ٕ
+            "\u0656",  # Subscript Alef ٖ
+            "\u0657",  # Inverted Damma ٗ
+            "\u0658",  # Mark Noon Ghunna ٘
+            "\u065c",  # Vowel Sign Dot Below
+            "\u065d",  # Reversed Damma
+            "\u065e",  # Fatha with Two Dots
+            "\u0670",  # Superscript Alef (Alif Khanjariyya) ـٰ
+        ]
+    )
 
     # Hamza variants mapped to base Hamza
     HAMZA_MAP: Final[dict[str, str]] = {
@@ -70,42 +72,46 @@ class ArabicNormalizer:
 
     # Ya variants mapped to plain Ya
     YA_MAP: Final[dict[str, str]] = {
-        "\u0649": "\u064A",  # ى → ي (Alif Maqsura)
-        "\u0626": "\u064A",  # ئ → ي (Ya with Hamza)
+        "\u0649": "\u064a",  # ى → ي (Alif Maqsura)
+        "\u0626": "\u064a",  # ئ → ي (Ya with Hamza)
     }
 
     # Tatweel (kashida) - stretching character
     TATWEEL: Final[str] = "\u0640"
 
     # Small letters and special marks (Uthmani)
-    SMALL_LETTERS: Final[frozenset[str]] = frozenset([
-        "\u06E1",  # Small High Dotless Head of Khah
-        "\u06E2",  # Small High Meem Isolated Form
-        "\u06E3",  # Small Low Seen
-        "\u06E4",  # Small High Madda
-        "\u06E5",  # Small Waw
-        "\u06E6",  # Small Ya
-        "\u06E7",  # Small High Yeh
-        "\u06E8",  # Small High Noon
-        "\u06E9",  # Place of Sajdah
-        "\u06EA",  # Empty Centre Low Stop
-        "\u06EB",  # Empty Centre High Stop
-        "\u06EC",  # Rounded High Stop
-        "\u06ED",  # Small Low Meem
-    ])
+    SMALL_LETTERS: Final[frozenset[str]] = frozenset(
+        [
+            "\u06e1",  # Small High Dotless Head of Khah
+            "\u06e2",  # Small High Meem Isolated Form
+            "\u06e3",  # Small Low Seen
+            "\u06e4",  # Small High Madda
+            "\u06e5",  # Small Waw
+            "\u06e6",  # Small Ya
+            "\u06e7",  # Small High Yeh
+            "\u06e8",  # Small High Noon
+            "\u06e9",  # Place of Sajdah
+            "\u06ea",  # Empty Centre Low Stop
+            "\u06eb",  # Empty Centre High Stop
+            "\u06ec",  # Rounded High Stop
+            "\u06ed",  # Small Low Meem
+        ]
+    )
 
     # Waqf (pause) signs
-    WAQF_SIGNS: Final[frozenset[str]] = frozenset([
-        "\u06D6",  # Small High Ligature Sad with Lam with Alef Maksura
-        "\u06D7",  # Small High Ligature Qaf with Lam with Alef Maksura
-        "\u06D8",  # Small High Meem Initial Form
-        "\u06D9",  # Small High Lam Alef
-        "\u06DA",  # Small High Jeem
-        "\u06DB",  # Small High Three Dots
-        "\u06DC",  # Small High Seen
-        "\u06DD",  # End of Ayah ۝
-        "\u06DE",  # Start of Rub El Hizb ۞
-    ])
+    WAQF_SIGNS: Final[frozenset[str]] = frozenset(
+        [
+            "\u06d6",  # Small High Ligature Sad with Lam with Alef Maksura
+            "\u06d7",  # Small High Ligature Qaf with Lam with Alef Maksura
+            "\u06d8",  # Small High Meem Initial Form
+            "\u06d9",  # Small High Lam Alef
+            "\u06da",  # Small High Jeem
+            "\u06db",  # Small High Three Dots
+            "\u06dc",  # Small High Seen
+            "\u06dd",  # End of Ayah ۝
+            "\u06de",  # Start of Rub El Hizb ۞
+        ]
+    )
 
     def normalize(
         self,
@@ -197,8 +203,7 @@ class ArabicNormalizer:
     def strip_non_letters(self, text: str) -> str:
         """Remove everything except Arabic letters."""
         ARABIC_LETTERS = frozenset(
-            "ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأؤإئى"
-            "\u0671"  # Alif Wasla
+            "ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأؤإئى\u0671"  # Alif Wasla
         )
         return "".join(c for c in text if c in ARABIC_LETTERS)
 
@@ -226,6 +231,4 @@ class ArabicNormalizer:
         Useful for checking if two texts are equivalent
         despite different spellings/diacritics.
         """
-        return (
-            self.normalize(text1, level) == self.normalize(text2, level)
-        )
+        return self.normalize(text1, level) == self.normalize(text2, level)

@@ -25,6 +25,7 @@ def _create_single_service(provider: str, model: str, settings: Settings) -> IEm
         from mizan.infrastructure.embeddings.gemini_embedding_service import (
             GeminiEmbeddingService,
         )
+
         return GeminiEmbeddingService(
             api_key=settings.gemini_api_key,
             model_name=model,
@@ -34,6 +35,7 @@ def _create_single_service(provider: str, model: str, settings: Settings) -> IEm
     from mizan.infrastructure.embeddings.sentence_transformer_service import (
         SentenceTransformerEmbeddingService,
     )
+
     return SentenceTransformerEmbeddingService(model_name=model)
 
 
@@ -71,6 +73,7 @@ def get_embedding_service() -> IEmbeddingService:
             )
 
         from mizan.infrastructure.embeddings.cascade_service import CascadeEmbeddingService
+
         return CascadeEmbeddingService(primary=primary, fallback=fallback)
 
     return primary

@@ -74,6 +74,7 @@ class GeminiEmbeddingService(IEmbeddingService):
 
         def _embed() -> list[list[float]]:
             import google.generativeai as genai
+
             self._get_client()
 
             result = genai.embed_content(

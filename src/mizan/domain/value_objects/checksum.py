@@ -8,13 +8,15 @@ from dataclasses import dataclass
 from typing import Final
 
 # Supported hash algorithms
-SUPPORTED_ALGORITHMS: Final[frozenset[str]] = frozenset({
-    "sha256",
-    "sha384",
-    "sha512",
-    "sha3_256",
-    "sha3_512",
-})
+SUPPORTED_ALGORITHMS: Final[frozenset[str]] = frozenset(
+    {
+        "sha256",
+        "sha384",
+        "sha512",
+        "sha3_256",
+        "sha3_512",
+    }
+)
 
 DEFAULT_ALGORITHM: Final[str] = "sha256"
 
@@ -102,8 +104,7 @@ class TextChecksum:
         parts = checksum_str.split(":", 1)
         if len(parts) != 2:
             raise ValueError(
-                f"Invalid checksum format: '{checksum_str}'. "
-                "Expected 'algorithm:hash' format."
+                f"Invalid checksum format: '{checksum_str}'. Expected 'algorithm:hash' format."
             )
         return cls(algorithm=parts[0], value=parts[1])
 

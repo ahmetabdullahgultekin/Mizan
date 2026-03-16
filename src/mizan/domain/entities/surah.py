@@ -123,9 +123,7 @@ class Surah:
             IndexError: If verse number is out of range
         """
         if location.surah_number != self.number:
-            raise ValueError(
-                f"Location {location} does not belong to Surah {self.number}"
-            )
+            raise ValueError(f"Location {location} does not belong to Surah {self.number}")
         return self.get_verse(location.verse_number)
 
     def get_verses_in_range(self, start: int, end: int) -> tuple[Verse, ...]:
@@ -145,9 +143,7 @@ class Surah:
         if start < 1:
             raise ValueError(f"Start verse must be >= 1, got {start}")
         if end > len(self.verses):
-            raise ValueError(
-                f"End verse {end} exceeds surah length {len(self.verses)}"
-            )
+            raise ValueError(f"End verse {end} exceeds surah length {len(self.verses)}")
         if start > end:
             raise ValueError(f"Start ({start}) cannot be greater than end ({end})")
 
@@ -172,6 +168,7 @@ class Surah:
             Complete surah text with verses separated by newlines
         """
         from mizan.domain.enums import ScriptType
+
         script = script or ScriptType.UTHMANI
         return "\n".join(v.get_text(script) for v in self.verses)
 
@@ -189,6 +186,7 @@ class Surah:
 
         # Verify overall surah checksum
         from mizan.domain.enums import ScriptType
+
         full_text = self.get_full_text(ScriptType.UTHMANI)
         return self.checksum.verify(full_text)
 
@@ -198,11 +196,7 @@ class Surah:
 
     def __repr__(self) -> str:
         """Return detailed representation."""
-        return (
-            f"Surah(number={self.number}, "
-            f"name={self.name_arabic!r}, "
-            f"verses={len(self.verses)})"
-        )
+        return f"Surah(number={self.number}, name={self.name_arabic!r}, verses={len(self.verses)})"
 
     def __len__(self) -> int:
         """Return verse count."""

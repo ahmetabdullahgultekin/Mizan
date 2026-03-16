@@ -38,10 +38,7 @@ class IntegrityGuard:
                       Defaults to config setting.
         """
         settings = get_settings()
-        self._fail_fast = (
-            fail_fast if fail_fast is not None
-            else settings.fail_on_integrity_error
-        )
+        self._fail_fast = fail_fast if fail_fast is not None else settings.fail_on_integrity_error
         self._expected_checksum = settings.expected_quran_checksum
 
     def verify_text(
@@ -147,8 +144,7 @@ class IntegrityGuard:
         """
         if not self._expected_checksum:
             logger.warning(
-                "No expected Quran checksum configured. "
-                "Skipping full Quran verification."
+                "No expected Quran checksum configured. Skipping full Quran verification."
             )
             return True
 

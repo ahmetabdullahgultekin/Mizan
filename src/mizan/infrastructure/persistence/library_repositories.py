@@ -160,7 +160,9 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         self._session = session
 
     async def create(self, source: TextSource) -> TextSource:
-        logger.info("text_source_creating", source_id=str(source.id), source_type=source.source_type.value)
+        logger.info(
+            "text_source_creating", source_id=str(source.id), source_type=source.source_type.value
+        )
         model = TextSourceModel(
             id=source.id,
             library_space_id=source.library_space_id,
@@ -193,9 +195,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
         space_id: UUID,
         source_type: SourceType | None = None,
     ) -> list[TextSource]:
-        stmt = select(TextSourceModel).where(
-            TextSourceModel.library_space_id == space_id
-        )
+        stmt = select(TextSourceModel).where(TextSourceModel.library_space_id == space_id)
         if source_type is not None:
             stmt = stmt.where(TextSourceModel.source_type == source_type.value)
         stmt = stmt.order_by(TextSourceModel.created_at)
@@ -222,9 +222,7 @@ class PostgresTextSourceRepository(ITextSourceRepository):
             values["embedding_model"] = embedding_model
 
         await self._session.execute(
-            update(TextSourceModel)
-            .where(TextSourceModel.id == source_id)
-            .values(**values)
+            update(TextSourceModel).where(TextSourceModel.id == source_id).values(**values)
         )
         await self._session.flush()
         return await self.get_by_id(source_id)
@@ -271,9 +269,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
         embedding: list[float],
     ) -> None:
         await self._session.execute(
-            update(TextChunkModel)
-            .where(TextChunkModel.id == chunk_id)
-            .values(embedding=embedding)
+            update(TextChunkModel).where(TextChunkModel.id == chunk_id).values(embedding=embedding)
         )
 
     async def update_embeddings_batch(
@@ -334,9 +330,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
         if min_similarity > 0:
             # cosine distance = 1 - similarity, so distance < 1 - min_sim
             max_distance = 1.0 - min_similarity
-            where_clauses.append(
-                f"(tc.embedding <=> CAST(:embedding AS vector)) < {max_distance}"
-            )
+            where_clauses.append(f"(tc.embedding <=> CAST(:embedding AS vector)) < {max_distance}")
 
         where_sql = " AND ".join(where_clauses)
 
@@ -376,9 +370,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
 
     async def delete_by_source(self, source_id: UUID) -> int:
         result = await self._session.execute(
-            delete(TextChunkModel).where(
-                TextChunkModel.text_source_id == source_id
-            )
+            delete(TextChunkModel).where(TextChunkModel.text_source_id == source_id)
         )
         return int(result.rowcount or 0)  # type: ignore[attr-defined]
 
@@ -457,15 +449,11 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         params: dict[str, object] = {"embedding": str(clean_embedding), "limit": limit}
 
         if exclude_surah is not None and exclude_verse is not None:
-            where_clauses.append(
-                "NOT (surah_number = :excl_surah AND verse_number = :excl_verse)"
-            )
+            where_clauses.append("NOT (surah_number = :excl_surah AND verse_number = :excl_verse)")
             params["excl_surah"] = exclude_surah
             params["excl_verse"] = exclude_verse
 
-        where_sql = (
-            "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
-        )
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         sql = sa_text(f"""
             SELECT
@@ -507,9 +495,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
 
         if min_similarity > 0:
             max_distance = 1.0 - min_similarity
-            where_clauses.append(
-                f"(ve.embedding <=> CAST(:embedding AS vector)) < {max_distance}"
-            )
+            where_clauses.append(f"(ve.embedding <=> CAST(:embedding AS vector)) < {max_distance}")
 
         where_sql = " AND ".join(where_clauses)
 
@@ -559,9 +545,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         result = await self._session.execute(stmt)
         return int(result.scalar_one())
 
-    async def get_embedded_verse_keys(
-        self, model_name: str | None = None
-    ) -> set[tuple[int, int]]:
+    async def get_embedded_verse_keys(self, model_name: str | None = None) -> set[tuple[int, int]]:
         """Return a set of (surah_number, verse_number) for already-embedded verses.
 
         Used by embed_quran.py to skip verses that already have embeddings,

@@ -52,6 +52,7 @@ def _init_sentry() -> None:
             detail="Install sentry-sdk to enable error tracking: pip install sentry-sdk",
         )
 
+
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -113,6 +114,7 @@ def create_app() -> FastAPI:
     if settings.sentry_dsn:
         try:
             from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+
             app.add_middleware(SentryAsgiMiddleware)
         except ImportError:
             pass  # sentry_sdk not installed; warning already emitted at startup
@@ -175,9 +177,7 @@ def create_app() -> FastAPI:
     # ---------------------------------------------------------------------------
 
     @app.exception_handler(Exception)
-    async def global_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Catch unhandled exceptions so CORS headers are always present."""
         logger.error("unhandled_exception", error=str(exc), type=type(exc).__name__)
         return JSONResponse(
@@ -190,9 +190,7 @@ def create_app() -> FastAPI:
     # ---------------------------------------------------------------------------
 
     @app.exception_handler(DomainException)
-    async def domain_exception_handler(
-        request: Request, exc: DomainException
-    ) -> JSONResponse:
+    async def domain_exception_handler(request: Request, exc: DomainException) -> JSONResponse:
         """Map domain exceptions to HTTP responses without repeating try/except in every router."""
         from mizan.domain.exceptions import (
             EntityNotFoundError,
@@ -230,6 +228,7 @@ def create_app() -> FastAPI:
 
     try:
         from prometheus_fastapi_instrumentator import Instrumentator
+
         Instrumentator().instrument(app).expose(app, endpoint="/metrics")
     except ImportError:
         pass  # prometheus_fastapi_instrumentator not installed; /metrics unavailable
@@ -245,9 +244,7 @@ def create_app() -> FastAPI:
 
     if settings.enable_semantic_analysis:
         app.include_router(library_router, prefix="/api/v1", tags=["Library"])
-        app.include_router(
-            semantic_search_router, prefix="/api/v1", tags=["Semantic Search"]
-        )
+        app.include_router(semantic_search_router, prefix="/api/v1", tags=["Semantic Search"])
 
     return app
 

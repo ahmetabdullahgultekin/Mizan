@@ -76,22 +76,26 @@ class SurahMetadata:
     def is_meccan(self) -> bool:
         """Check if this is a Meccan surah."""
         from mizan.domain.enums import RevelationType
+
         return self.revelation_type == RevelationType.MECCAN
 
     @property
     def is_medinan(self) -> bool:
         """Check if this is a Medinan surah."""
         from mizan.domain.enums import RevelationType
+
         return self.revelation_type == RevelationType.MEDINAN
 
     @property
     def has_basmalah(self) -> bool:
         """Check if this surah has a Basmalah."""
         from mizan.domain.enums import BasmalahStatus
+
         return self.basmalah_status != BasmalahStatus.ABSENT
 
     @property
     def basmalah_is_verse(self) -> bool:
         """Check if Basmalah counts as a verse in this surah."""
         from mizan.domain.enums import BasmalahStatus
+
         return self.basmalah_status == BasmalahStatus.NUMBERED_VERSE

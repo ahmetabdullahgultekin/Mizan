@@ -237,7 +237,9 @@ async def analyze_verse(
             verse_number=verse,
             include_breakdown=True,
         )
-        frequency_result = await analyzer.get_letter_frequency(surah_number=surah, verse_number=verse)
+        frequency_result = await analyzer.get_letter_frequency(
+            surah_number=surah, verse_number=verse
+        )
 
         abjad_breakdown = None
         if abjad_result.get("breakdown"):

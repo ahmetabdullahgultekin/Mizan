@@ -52,9 +52,7 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0")  # nosec B104
     api_port: int = Field(default=8000, ge=1, le=65535)
     debug: bool = Field(default=False)
-    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
-        default="INFO"
-    )
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO")
 
     # ==========================================================================
     # Security
@@ -162,8 +160,7 @@ class Settings(BaseSettings):
     sentry_dsn: str = Field(
         default="",
         description=(
-            "Sentry DSN for error tracking. "
-            "Empty string disables Sentry (default for local dev)."
+            "Sentry DSN for error tracking. Empty string disables Sentry (default for local dev)."
         ),
     )
     sentry_environment: str = Field(

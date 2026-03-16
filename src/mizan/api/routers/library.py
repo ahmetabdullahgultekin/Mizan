@@ -131,7 +131,9 @@ async def get_library_space(space_id: UUID, session: DbSession) -> LibrarySpaceR
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a library space",
 )
-async def delete_library_space(space_id: UUID, session: DbSession, _: None = Depends(verify_api_key)) -> None:
+async def delete_library_space(
+    space_id: UUID, session: DbSession, _: None = Depends(verify_api_key)
+) -> None:
     """Delete a library space and all its sources and chunks."""
     svc = _get_library_service(session)
     found = await svc.delete_space(space_id)
@@ -146,6 +148,7 @@ async def delete_library_space(space_id: UUID, session: DbSession, _: None = Dep
 
 def _source_to_response(source: object) -> TextSourceResponse:
     from mizan.domain.entities.library import TextSource
+
     s: TextSource = source  # type: ignore[assignment]
     return TextSourceResponse(
         id=s.id,
@@ -248,7 +251,9 @@ async def list_text_sources(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a text source",
 )
-async def delete_text_source(source_id: UUID, session: DbSession, _: None = Depends(verify_api_key)) -> None:
+async def delete_text_source(
+    source_id: UUID, session: DbSession, _: None = Depends(verify_api_key)
+) -> None:
     """Delete a text source and all its chunks and embeddings."""
     lib_svc = _get_library_service(session)
     found = await lib_svc.delete_source(source_id)

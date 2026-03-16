@@ -134,12 +134,14 @@ class Verse:
     def text_uthmani(self) -> str:
         """Get Uthmani script text (convenience property)."""
         from mizan.domain.enums import ScriptType
+
         return self.get_text(ScriptType.UTHMANI)
 
     @property
     def text_simple(self) -> str:
         """Get Simple script text (convenience property)."""
         from mizan.domain.enums import ScriptType
+
         return self.get_text(ScriptType.SIMPLE)
 
     @property
@@ -176,9 +178,7 @@ class Verse:
     def __repr__(self) -> str:
         """Return detailed representation."""
         return (
-            f"Verse(location={self.location}, "
-            f"words={self.word_count}, "
-            f"letters={self.letter_count})"
+            f"Verse(location={self.location}, words={self.word_count}, letters={self.letter_count})"
         )
 
     def __hash__(self) -> int:

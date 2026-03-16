@@ -126,10 +126,7 @@ class IndexingService:
                 texts = [PASSAGE_PREFIX + c.content for c in batch]
                 embeddings = await self._embedder.embed_batch(texts)
 
-                updates = [
-                    (chunk.id, emb)
-                    for chunk, emb in zip(batch, embeddings, strict=True)
-                ]
+                updates = [(chunk.id, emb) for chunk, emb in zip(batch, embeddings, strict=True)]
                 await self._chunks.update_embeddings_batch(updates)
 
                 indexed += len(batch)
@@ -158,9 +155,7 @@ class IndexingService:
 
         except Exception:
             logger.exception("indexing_failed", source_id=str(source_id))
-            await self._sources.update_status(
-                source_id, status=IndexingStatus.FAILED
-            )
+            await self._sources.update_status(source_id, status=IndexingStatus.FAILED)
             raise
 
     def _chunk_text(self, content: str, source_type: SourceType) -> list[RawChunk]:
@@ -219,13 +214,15 @@ class QuranEmbeddingIndexer:
             from mizan.infrastructure.persistence.library_repositories import (
                 PostgresVerseEmbeddingRepository,
             )
+
             if isinstance(self._verse_embs, PostgresVerseEmbeddingRepository):
                 existing_keys = await self._verse_embs.get_embedded_verse_keys(
                     model_name=self._embedder.model_name
                 )
                 before_count = len(verses)
                 verses = [
-                    v for v in verses
+                    v
+                    for v in verses
                     if (v.location.surah_number, v.location.verse_number) not in existing_keys
                 ]
                 skipped = before_count - len(verses)

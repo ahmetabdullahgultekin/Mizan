@@ -24,7 +24,12 @@ class AbjadCalculator:
     # Mashriqi (Eastern) Abjad values - أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ
     MASHRIQI_VALUES: Final[dict[str, int]] = {
         # Units (1-9)
-        "ا": 1, "أ": 1, "إ": 1, "آ": 1, "ء": 1, "\u0671": 1,  # Alif variants + Alif Wasla
+        "ا": 1,
+        "أ": 1,
+        "إ": 1,
+        "آ": 1,
+        "ء": 1,
+        "\u0671": 1,  # Alif variants + Alif Wasla
         "ب": 2,
         "ج": 3,
         "د": 4,
@@ -34,7 +39,9 @@ class AbjadCalculator:
         "ح": 8,
         "ط": 9,
         # Tens (10-90)
-        "ي": 10, "ى": 10, "ئ": 10,  # Ya variants
+        "ي": 10,
+        "ى": 10,
+        "ئ": 10,  # Ya variants
         "ك": 20,
         "ل": 30,
         "م": 40,
@@ -60,7 +67,12 @@ class AbjadCalculator:
     # Maghribi (Western) Abjad values - different ordering for س ش ص ض
     MAGHRIBI_VALUES: Final[dict[str, int]] = {
         # Units (1-9) - same as Mashriqi
-        "ا": 1, "أ": 1, "إ": 1, "آ": 1, "ء": 1, "\u0671": 1,
+        "ا": 1,
+        "أ": 1,
+        "إ": 1,
+        "آ": 1,
+        "ء": 1,
+        "\u0671": 1,
         "ب": 2,
         "ج": 3,
         "د": 4,
@@ -70,7 +82,9 @@ class AbjadCalculator:
         "ح": 8,
         "ط": 9,
         # Tens (10-90) - same as Mashriqi
-        "ي": 10, "ى": 10, "ئ": 10,
+        "ي": 10,
+        "ى": 10,
+        "ئ": 10,
         "ك": 20,
         "ل": 30,
         "م": 40,
@@ -117,11 +131,7 @@ class AbjadCalculator:
         from mizan.domain.value_objects import AbjadValue
 
         system = system or AbjadSystem.MASHRIQI
-        values = (
-            self.MASHRIQI_VALUES
-            if system == AbjadSystem.MASHRIQI
-            else self.MAGHRIBI_VALUES
-        )
+        values = self.MASHRIQI_VALUES if system == AbjadSystem.MASHRIQI else self.MAGHRIBI_VALUES
 
         breakdown: list[tuple[str, int]] = []
         total = 0
@@ -173,11 +183,7 @@ class AbjadCalculator:
         from mizan.domain.enums import AbjadSystem
 
         system = system or AbjadSystem.MASHRIQI
-        values = (
-            self.MASHRIQI_VALUES
-            if system == AbjadSystem.MASHRIQI
-            else self.MAGHRIBI_VALUES
-        )
+        values = self.MASHRIQI_VALUES if system == AbjadSystem.MASHRIQI else self.MAGHRIBI_VALUES
 
         if letter == self.ALIF_KHANJARIYYA:
             return 1

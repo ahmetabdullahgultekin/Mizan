@@ -19,28 +19,53 @@ class EntityVariantMatcher:
     """
 
     # Single-letter matchable prefixes
-    MATCHABLE_PREFIXES: Final[frozenset[str]] = frozenset([
-        "بِ", "بـ", "ب",  # Preposition "bi" (by/with)
-        "وَ", "وـ", "و",  # Conjunction "wa" (and)
-        "فَ", "فـ", "ف",  # Conjunction "fa" (so/then)
-        "لِ", "لـ", "ل",  # Preposition "li" (to/for)
-        "كَ", "كـ", "ك",  # Preposition "ka" (like/as)
-        "أَ", "أ",        # Interrogative/vocative
-        "يَا", "يا",      # Vocative particle
-    ])
+    MATCHABLE_PREFIXES: Final[frozenset[str]] = frozenset(
+        [
+            "بِ",
+            "بـ",
+            "ب",  # Preposition "bi" (by/with)
+            "وَ",
+            "وـ",
+            "و",  # Conjunction "wa" (and)
+            "فَ",
+            "فـ",
+            "ف",  # Conjunction "fa" (so/then)
+            "لِ",
+            "لـ",
+            "ل",  # Preposition "li" (to/for)
+            "كَ",
+            "كـ",
+            "ك",  # Preposition "ka" (like/as)
+            "أَ",
+            "أ",  # Interrogative/vocative
+            "يَا",
+            "يا",  # Vocative particle
+        ]
+    )
 
     # Combined prefixes (multiple prefixes together)
-    COMBINED_PREFIXES: Final[frozenset[str]] = frozenset([
-        "وَبِ", "وب",    # wa + bi
-        "فَبِ", "فب",    # fa + bi
-        "وَلِ", "ول",    # wa + li
-        "فَلِ", "فل",    # fa + li
-        "وَكَ", "وك",    # wa + ka
-        "فَكَ", "فك",    # fa + ka
-        "أَبِ", "أب",    # a + bi
-        "أَفَ", "أف",    # a + fa
-        "أَوَ", "أو",    # a + wa
-    ])
+    COMBINED_PREFIXES: Final[frozenset[str]] = frozenset(
+        [
+            "وَبِ",
+            "وب",  # wa + bi
+            "فَبِ",
+            "فب",  # fa + bi
+            "وَلِ",
+            "ول",  # wa + li
+            "فَلِ",
+            "فل",  # fa + li
+            "وَكَ",
+            "وك",  # wa + ka
+            "فَكَ",
+            "فك",  # fa + ka
+            "أَبِ",
+            "أب",  # a + bi
+            "أَفَ",
+            "أف",  # a + fa
+            "أَوَ",
+            "أو",  # a + wa
+        ]
+    )
 
     # All prefixes combined
     ALL_PREFIXES: Final[frozenset[str]] = MATCHABLE_PREFIXES | COMBINED_PREFIXES
@@ -85,11 +110,22 @@ class EntityVariantMatcher:
 
     def _strip_tashkeel(self, text: str) -> str:
         """Remove diacritical marks from text."""
-        TASHKEEL = frozenset([
-            "\u064B", "\u064C", "\u064D", "\u064E", "\u064F",
-            "\u0650", "\u0651", "\u0652", "\u0653", "\u0654",
-            "\u0655", "\u0670",
-        ])
+        TASHKEEL = frozenset(
+            [
+                "\u064b",
+                "\u064c",
+                "\u064d",
+                "\u064e",
+                "\u064f",
+                "\u0650",
+                "\u0651",
+                "\u0652",
+                "\u0653",
+                "\u0654",
+                "\u0655",
+                "\u0670",
+            ]
+        )
         return "".join(c for c in text if c not in TASHKEEL)
 
     def matches(self, word: str) -> bool:
@@ -138,7 +174,7 @@ class EntityVariantMatcher:
             clean_prefix = self._strip_tashkeel(prefix)
             if word.startswith(prefix) or word.startswith(clean_prefix):
                 actual_prefix = prefix if word.startswith(prefix) else clean_prefix
-                remainder = word[len(actual_prefix):]
+                remainder = word[len(actual_prefix) :]
                 if self._strip_tashkeel(remainder) == self._strip_tashkeel(self._base_word):
                     return (actual_prefix, remainder)
 
