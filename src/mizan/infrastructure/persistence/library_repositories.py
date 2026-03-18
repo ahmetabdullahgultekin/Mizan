@@ -381,25 +381,29 @@ class PostgresTextChunkRepository(ITextChunkRepository):
         Full-text keyword search on text_chunks.content using tsvector + GIN.
 
         Uses plainto_tsquery('simple', query) for tsvector matching and
-        a LIKE fallback for direct substring matching on short queries.
-        The LIKE path normalizes alef variants (ٱ أ إ آ → ا) on both sides.
+        a LIKE fallback with Arabic orthography variant generation.
         """
         from sqlalchemy import text as sa_text
 
+        # Reuse the verse repo's variant generation for Arabic search
+        search_variants = PostgresVerseEmbeddingRepository._arabic_search_variants(query)
+
         params: dict[str, object] = {"query": query, "limit": limit}
 
-        # Normalize alef variants for ILIKE comparison
-        _norm = (
-            "REPLACE(REPLACE(REPLACE(REPLACE("
-            "{col}"
-            ", 'ٱ', 'ا'), 'أ', 'ا'), 'إ', 'ا'), 'آ', 'ا')"
-        )
-        norm_content = _norm.format(col="tc.content")
-        norm_query = _norm.format(col=":query")
+        # Build ILIKE conditions for each variant
+        ilike_conditions = []
+        for i, variant in enumerate(search_variants):
+            param_name = f"variant_{i}"
+            params[param_name] = variant
+            ilike_conditions.append(
+                f"tc.content ILIKE '%' || :{param_name} || '%'"
+            )
+
+        ilike_sql = " OR ".join(ilike_conditions) if ilike_conditions else "FALSE"
 
         where_clauses = [
             f"(tc.content_search_vector @@ plainto_tsquery('simple', :query)"
-            f" OR {norm_content} ILIKE '%' || {norm_query} || '%')"
+            f" OR {ilike_sql})"
         ]
 
         if source_types:
@@ -421,8 +425,7 @@ class PostgresTextChunkRepository(ITextChunkRepository):
                 tc.content,
                 GREATEST(
                     ts_rank(tc.content_search_vector, plainto_tsquery('simple', :query)),
-                    CASE WHEN {norm_content} ILIKE '%' || {norm_query} || '%'
-                         THEN 0.1 ELSE 0.0 END
+                    CASE WHEN {ilike_sql} THEN 0.1 ELSE 0.0 END
                 ) AS rank_score,
                 tc.metadata
             FROM text_chunks tc
@@ -620,6 +623,67 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             for row in rows
         ]
 
+    # Common Arabic stop words that should not be used as ILIKE search terms
+    # (they appear in nearly every verse and would drown out specific matches)
+    _ARABIC_STOP_WORDS = frozenset({
+        "من", "في", "على", "إلى", "عن", "مع", "هو", "هي", "هم", "هن",
+        "ما", "لا", "ان", "أن", "إن", "كل", "بل", "قد", "لم", "لن",
+        "ثم", "أو", "بن", "ذا", "تلك", "هذا", "هذه", "ذلك", "التي",
+        "الذي", "الذين", "التى", "كان", "كانت", "يكن", "ليس", "بعد",
+        "قبل", "حتى", "عند", "بين", "فوق", "تحت", "كما", "لما",
+        "وما", "ولا", "فلا", "إلا", "ألا",
+        # Turkish stop words (common in mixed queries)
+        "ve", "ile", "bir", "bu", "de", "da",
+        # English stop words
+        "the", "and", "to", "of", "in", "for", "is", "on", "at", "by",
+        "with", "from", "that", "this", "not", "are", "was", "were",
+        "patience", "mother", "father",  # too generic in English
+    })
+
+    @staticmethod
+    def _arabic_search_variants(query: str) -> list[str]:
+        """
+        Generate per-word search variants for Arabic Quranic orthography.
+
+        Uthmani script drops alef in many words (والدين → ولدين), uses
+        alef-wasla (ٱ) instead of plain alef (ا), and has other differences.
+        Returns individual word variants (not full-query strings) to avoid
+        matching common words like على that appear in nearly every verse.
+        """
+        alef_chars = "ٱأإآ"
+        plain_alef = "ا"
+        stop_words = PostgresVerseEmbeddingRepository._ARABIC_STOP_WORDS
+
+        variants: set[str] = set()
+
+        for word in query.split():
+            # Skip stop words and very short words
+            if word in stop_words or len(word) < 3:
+                continue
+
+            # Original word
+            variants.add(word)
+
+            # Normalize alef variants → plain alef
+            normalized = word
+            for ch in alef_chars:
+                normalized = normalized.replace(ch, plain_alef)
+            if normalized != word:
+                variants.add(normalized)
+
+            # Strip alef entirely (Uthmani often drops it)
+            stripped = normalized.replace(plain_alef, "")
+            if len(stripped) >= 3:
+                variants.add(stripped)
+
+            # Also try removing leading ب/و/ف/ل prefixes from stripped
+            # to catch "بولديه" matching "ولد" root
+            for prefix in ("ب", "و", "ف", "ل", "بال", "وال", "فال", "لل"):
+                if stripped.startswith(prefix) and len(stripped) > len(prefix) + 2:
+                    variants.add(stripped[len(prefix):])
+
+        return [v for v in variants if len(v) >= 3 and v not in stop_words]
+
     async def keyword_search_verses(
         self,
         query: str,
@@ -629,25 +693,28 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         Full-text keyword search on verses.text_no_tashkeel using tsvector + GIN.
 
         Uses plainto_tsquery('simple', query) for tsvector matching and
-        a LIKE fallback for direct substring matching of short terms.
-        The LIKE path normalizes alef variants (ٱ أ إ آ → ا) on both sides
-        so that user queries match Uthmani-script Arabic text.
+        a LIKE fallback for direct substring matching. Generates multiple
+        search variants to handle Quranic orthography differences (e.g.,
+        والدين → ولدين, where Uthmani script drops alef).
         Returns results as SemanticSearchResult for unified search merging.
         """
         from sqlalchemy import text as sa_text
 
+        # Generate search variants for Arabic orthography differences
+        search_variants = self._arabic_search_variants(query)
+
         params: dict[str, object] = {"query": query, "limit": limit}
 
-        # _norm_alef is a SQL expression that normalizes alef variants
-        # (alef-wasla ٱ, alef-hamza-above أ, alef-hamza-below إ, alef-madda آ)
-        # to plain alef ا for consistent substring matching.
-        _norm = (
-            "REPLACE(REPLACE(REPLACE(REPLACE("
-            "{col}"
-            ", 'ٱ', 'ا'), 'أ', 'ا'), 'إ', 'ا'), 'آ', 'ا')"
-        )
-        norm_text = _norm.format(col="v.text_no_tashkeel")
-        norm_query = _norm.format(col=":query")
+        # Build ILIKE conditions for each variant
+        ilike_conditions = []
+        for i, variant in enumerate(search_variants):
+            param_name = f"variant_{i}"
+            params[param_name] = variant
+            ilike_conditions.append(
+                f"v.text_no_tashkeel ILIKE '%' || :{param_name} || '%'"
+            )
+
+        ilike_sql = " OR ".join(ilike_conditions) if ilike_conditions else "FALSE"
 
         sql = sa_text(f"""
             SELECT
@@ -659,12 +726,11 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
                 v.text_uthmani   AS content,
                 GREATEST(
                     ts_rank(v.text_search_vector, plainto_tsquery('simple', :query)),
-                    CASE WHEN {norm_text} ILIKE '%' || {norm_query} || '%'
-                         THEN 0.1 ELSE 0.0 END
+                    CASE WHEN {ilike_sql} THEN 0.1 ELSE 0.0 END
                 ) AS rank_score
             FROM verses v
             WHERE v.text_search_vector @@ plainto_tsquery('simple', :query)
-               OR {norm_text} ILIKE '%' || {norm_query} || '%'
+               OR {ilike_sql}
             ORDER BY rank_score DESC
             LIMIT :limit
         """)  # nosec B608

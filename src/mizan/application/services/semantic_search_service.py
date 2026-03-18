@@ -100,74 +100,70 @@ class SemanticSearchService:
         )
         search_library = source_types is None or bool(non_quran_types)
 
-        # Build coroutines for parallel execution
-        coros: list[asyncio.coroutine] = []  # type: ignore[type-arg]
-
-        # --- Vector retrieval path (existing) ---
+        # --- Vector retrieval paths ---
+        # NOTE: SQLAlchemy AsyncSession does NOT support concurrent queries
+        # on the same session, so we run all DB queries sequentially.
         query_embedding = await self._embedder.embed_text(QUERY_PREFIX + query)
 
+        result_lists: list[list[SemanticSearchResult]] = []
+
         if search_quran_verses:
-            coros.append(
-                self._verse_embs.search_by_text(
+            try:
+                verse_results = await self._verse_embs.search_by_text(
                     query_embedding=query_embedding,
                     limit=retrieval_limit,
                     min_similarity=min_similarity,
                 )
-            )
+                result_lists.append(verse_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="verse_vector", error=str(e))
 
         if search_library:
-            coros.append(
-                self._chunks.semantic_search(
+            try:
+                chunk_results = await self._chunks.semantic_search(
                     query_embedding=query_embedding,
                     library_space_id=library_space_id,
                     source_types=non_quran_types,
                     limit=retrieval_limit,
                     min_similarity=min_similarity,
                 )
-            )
+                result_lists.append(chunk_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="chunk_vector", error=str(e))
 
         # --- Translation embedding retrieval path (cross-lingual) ---
         if search_quran_verses and self._verse_translations is not None:
-            coros.append(
-                self._verse_translations.search_by_text(
+            try:
+                translation_results = await self._verse_translations.search_by_text(
                     query_embedding=query_embedding,
                     limit=retrieval_limit,
                     min_similarity=min_similarity,
                 )
-            )
+                result_lists.append(translation_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="translation_vector", error=str(e))
 
-        # --- Keyword retrieval path (BM25 / tsvector) ---
+        # --- Keyword retrieval paths (BM25 / tsvector) ---
         if search_quran_verses:
-            coros.append(
-                self._verse_embs.keyword_search_verses(
+            try:
+                keyword_verse_results = await self._verse_embs.keyword_search_verses(
                     query=query,
                     limit=retrieval_limit,
                 )
-            )
+                result_lists.append(keyword_verse_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="verse_keyword", error=str(e))
 
         if search_library:
-            coros.append(
-                self._chunks.keyword_search_chunks(
+            try:
+                keyword_chunk_results = await self._chunks.keyword_search_chunks(
                     query=query,
                     source_types=non_quran_types,
                     limit=retrieval_limit,
                 )
-            )
-
-        # Run all retrieval paths in parallel
-        all_lists = await asyncio.gather(*coros, return_exceptions=True)
-
-        # Collect successful result lists, log any failures
-        result_lists: list[list[SemanticSearchResult]] = []
-        for i, res in enumerate(all_lists):
-            if isinstance(res, Exception):
-                logger.warning(
-                    "search_path_failed",
-                    path_index=i,
-                    error=str(res),
-                )
-            else:
-                result_lists.append(res)
+                result_lists.append(keyword_chunk_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="chunk_keyword", error=str(e))
 
         if not result_lists:
             return []
