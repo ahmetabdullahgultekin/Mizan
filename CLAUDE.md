@@ -10,13 +10,17 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 - **Islamic knowledge library** for managing and indexing Arabic text sources
 - **Interactive frontend** (Next.js) with Playground, Search, and Library pages
 
-## Current State (as of 2026-03-15)
+## Current State (as of 2026-03-18)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Backend API (analysis, verses) | ✅ Production | 114 surahs, 6,236 verses ingested |
-| Semantic Search backend | ✅ Production | Quran verse search working (Arabic/Turkish/English) |
+| Hybrid Semantic Search | ✅ Production | Vector + BM25 keyword + RRF fusion across 4 retrieval paths |
 | Verse Embeddings | ✅ Production | 6,236 vectors via intfloat/multilingual-e5-base (768d) |
+| Verse Translations | ✅ Production | 6,236 EN (Sahih International) + 6,236 TR (Diyanet) embedded |
+| BM25 Keyword Search | ✅ Production | tsvector + GIN indexes on verses + text_chunks |
+| ISRI Arabic Stemmer | ✅ Production | Pure-Python root extraction (والدين→ولد, صابرين→صبر) |
+| Cross-Encoder Reranker | 🔧 Built, disabled | Infrastructure ready; needs multilingual model (ENABLE_RERANKING) |
 | Cascade Embedding Service | ✅ Complete | Local provider active; Gemini cascade optional |
 | Frontend Playground | ✅ Production | Shows verse text in results, letter/word/Abjad analysis |
 | Frontend `/search` | ✅ Production | Quran semantic search with source filters + similarity slider |
@@ -41,14 +45,17 @@ python scripts/ingest_tanzil.py
 # 4. Generate verse embeddings (~5 min on CPU)
 python scripts/embed_quran.py
 
-# 5. Ingest Tafsir + Hadith (optional, ~30 min on CPU)
+# 5. Ingest verse translations for cross-lingual search (~10 min)
+python scripts/ingest_translations.py    # EN (Sahih International) + TR (Diyanet) from quran.com
+
+# 6. Ingest Tafsir + Hadith (optional, ~30 min on CPU)
 python scripts/ingest_tafsir.py          # Ibn Kathir from quran.com API
 python scripts/ingest_hadith.py          # Kutub al-Sittah from hadith-api
 
-# 6. Start API server
+# 7. Start API server
 uvicorn mizan.api.main:app --reload --host 0.0.0.0 --port 8000
 
-# 7. Start frontend (separate terminal)
+# 8. Start frontend (separate terminal)
 cd website && npm run dev
 ```
 
@@ -63,6 +70,9 @@ Controlled via environment variables:
 | `EMBEDDING_FALLBACK_PROVIDER` | Fallback provider (empty = disabled) | `""` |
 | `EMBEDDING_FALLBACK_MODEL` | Fallback model name | `intfloat/multilingual-e5-base` |
 | `GEMINI_API_KEY` | Required if using Gemini | `""` |
+| `ENABLE_RERANKING` | Enable cross-encoder re-ranking | `false` |
+| `RERANKER_MODEL` | Cross-encoder model name | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
+| `RERANKER_TOP_K` | Candidates to re-rank | `30` |
 
 **Cascade mode** (Gemini first, local on failure):
 ```env
@@ -81,13 +91,14 @@ GEMINI_API_KEY=your-key-here
 src/mizan/
 ├── domain/           # Core logic — no external deps
 │   ├── entities/     # Verse, Surah, TextSource, TextChunk, LibrarySpace
-│   ├── services/     # AbjadCalculator, LetterCounter, IEmbeddingService (port)
+│   ├── services/     # AbjadCalculator, LetterCounter, IEmbeddingService, IRerankerService (ports)
 │   └── repositories/ # Repository interfaces
 ├── application/      # Use cases
 │   └── services/     # library_service, indexing_service, semantic_search_service
 ├── infrastructure/
 │   ├── embeddings/   # sentence_transformer_service, gemini_embedding_service, cascade_service, factory
-│   ├── persistence/  # SQLAlchemy models + repositories
+│   ├── reranking/    # cross_encoder_service, factory (optional cross-encoder re-ranking)
+│   ├── persistence/  # SQLAlchemy models + repositories (incl. verse_translations)
 │   └── config.py     # Settings (pydantic-settings)
 └── api/
     └── routers/      # verses, analysis, library, semantic_search
@@ -106,6 +117,9 @@ src/mizan/
 | `scripts/embed_quran.py` | Generate verse embeddings into verse_embeddings table |
 | `scripts/ingest_tafsir.py` | Ingest Tafsir Ibn Kathir from quran.com API into text_chunks |
 | `scripts/ingest_hadith.py` | Ingest Hadith collections (Bukhari, Muslim, etc.) into text_chunks |
+| `scripts/ingest_translations.py` | Fetch EN/TR verse translations from quran.com API + embed |
+| `src/mizan/infrastructure/reranking/` | Cross-encoder re-ranking service (optional, disabled by default) |
+| `src/mizan/domain/services/reranking_service.py` | IRerankerService port interface |
 | `website/lib/api/client.ts` | Frontend API client — all backend calls go here |
 | `website/types/api.ts` | TypeScript types matching backend response shapes |
 | `website/config/navigation.ts` | Nav links (Home, Playground, Search, Library, Docs, About) |
@@ -140,6 +154,6 @@ GET  /api/v1/library/sources/{id}               — Source detail + indexing sta
 POST /api/v1/library/sources/{id}/index         — Start indexing (async)
 DELETE /api/v1/library/sources/{id}             — Delete source + chunks
 
-POST /api/v1/search/semantic                    — Semantic search across indexed texts
+POST /api/v1/search/semantic                    — Hybrid search (vector + BM25 + translations + RRF)
 GET  /api/v1/verses/{surah}/{verse}/similar     — Similar verses by embedding
 ```

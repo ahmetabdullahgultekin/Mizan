@@ -9,7 +9,6 @@ Reciprocal Rank Fusion (RRF).
 
 from __future__ import annotations
 
-import asyncio
 from uuid import UUID
 
 import structlog
