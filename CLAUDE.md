@@ -17,13 +17,13 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Backend API (analysis, verses) | ✅ Production | 114 surahs, 6,236 verses ingested |
 | Hybrid Semantic Search | ✅ Production | Vector + BM25 keyword + RRF fusion across 4 retrieval paths |
 | Verse Embeddings | ✅ Production | 6,236 vectors via intfloat/multilingual-e5-base (768d) |
-| Verse Translations | ✅ Production | 6,236 EN (Sahih International) + 6,236 TR (Diyanet) embedded |
+| Verse Translations | ✅ Production | 6,236 EN (Sahih International) + 6,236 TR (Elmalili Hamdi Yazir) embedded |
 | BM25 Keyword Search | ✅ Production | tsvector + GIN indexes on verses + text_chunks |
 | ISRI Arabic Stemmer | ✅ Production | Pure-Python root extraction (والدين→ولد, صابرين→صبر) |
 | Cross-Encoder Reranker | 🔧 Built, disabled | Infrastructure ready; needs multilingual model (ENABLE_RERANKING) |
 | Cascade Embedding Service | ✅ Complete | Local provider active; Gemini cascade optional |
 | Frontend Playground | ✅ Production | Shows verse text in results, letter/word/Abjad analysis |
-| Frontend `/search` | ✅ Production | Quran semantic search with source filters + similarity slider |
+| Frontend `/search` | ✅ Production | Hybrid search with EN/TR translations displayed per verse |
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
 | Morphology (MASAQ) | ❌ Not started | Future phase |

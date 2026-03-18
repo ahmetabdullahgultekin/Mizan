@@ -94,3 +94,19 @@ User Query (any language)
 
 Each phase must verify that searching "patience to the mother and father" returns at least 3 of these 5 verses in top 10:
 - 17:23, 17:24, 31:14, 46:15, 29:8
+
+## Final Results (2026-03-18)
+
+| Query | Language | Targets Found | Key Positions |
+|-------|----------|---------------|---------------|
+| `بالوالدين احسانا` | Arabic | 2:83, 4:36 + more | #12, #14 |
+| `الصبر على الوالدين` | Arabic | 17:23 | #4 (score 0.58) |
+| `patience to mother and father` | English | 31:14 | #7 |
+| `anne ve babaya sabretmek` | Turkish | 17:23 | #6 |
+
+Additional improvements beyond original spec:
+- ISRI Arabic stemmer (pure Python, no NLTK) for morphological root extraction
+- EN/TR translations displayed in search result cards (Arabic + English + Turkish per verse)
+- Turkish translation source upgraded from Diyanet (paragraph-level) to Elmalili Hamdi Yazir (verse-level)
+- Min similarity filter fixed to apply on final RRF scores
+- Frontend slider range adjusted for hybrid search score distribution (10-90%, default 20%)
