@@ -70,14 +70,32 @@ function SearchResultCard({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Arabic Content */}
       <p
-        dir="auto"
+        dir="rtl"
         className="text-base leading-relaxed font-arabic"
         style={{ fontFamily: 'var(--font-amiri), serif' }}
       >
         {result.content}
       </p>
+
+      {/* Translations (if available) */}
+      {(result.metadata?.translation_en || result.metadata?.translation_tr) && (
+        <div className="space-y-2 pt-2 border-t border-border/50">
+          {result.metadata.translation_en && (
+            <p dir="ltr" className="text-sm text-muted-foreground leading-relaxed">
+              <span className="text-xs font-medium text-gold-500/70 mr-1.5">EN</span>
+              {String(result.metadata.translation_en)}
+            </p>
+          )}
+          {result.metadata.translation_tr && (
+            <p dir="ltr" className="text-sm text-muted-foreground leading-relaxed">
+              <span className="text-xs font-medium text-gold-500/70 mr-1.5">TR</span>
+              {String(result.metadata.translation_tr)}
+            </p>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -90,7 +108,7 @@ export default function SearchPage() {
   const { t } = useI18n();
   const [query, setQuery] = React.useState('');
   const [selectedTypes, setSelectedTypes] = React.useState<Set<SourceType>>(new Set());
-  const [minSimilarity, setMinSimilarity] = React.useState(0.65);
+  const [minSimilarity, setMinSimilarity] = React.useState(0.20);
   const [results, setResults] = React.useState<SemanticSearchResultResponse[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -215,16 +233,16 @@ export default function SearchPage() {
               <input
                 id="min-similarity"
                 type="range"
-                min={0.5}
-                max={0.95}
+                min={0.10}
+                max={0.90}
                 step={0.05}
                 value={minSimilarity}
                 onChange={(e) => setMinSimilarity(parseFloat(e.target.value))}
                 className="w-24 accent-gold-500"
                 aria-label="Minimum similarity threshold"
                 aria-valuenow={Math.round(minSimilarity * 100)}
-                aria-valuemin={50}
-                aria-valuemax={95}
+                aria-valuemin={10}
+                aria-valuemax={90}
                 aria-valuetext={`${Math.round(minSimilarity * 100)}% minimum similarity`}
               />
               <span className="tabular-nums w-10" aria-live="polite">{Math.round(minSimilarity * 100)}%</span>

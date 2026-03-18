@@ -2,33 +2,43 @@
 Semantic Search Service - searches across Islamic texts by meaning.
 
 Uses cosine similarity between the query embedding and stored chunk/verse
-embeddings to find semantically related passages.
+embeddings to find semantically related passages. Also performs BM25-style
+keyword search via PostgreSQL tsvector/GIN and fuses results with
+Reciprocal Rank Fusion (RRF).
 """
 
 from __future__ import annotations
 
 from uuid import UUID
 
+import structlog
+
 from mizan.domain.entities.library import SemanticSearchResult
 from mizan.domain.enums.library_enums import SourceType
 from mizan.domain.repositories.library_interfaces import (
     ITextChunkRepository,
     IVerseEmbeddingRepository,
+    IVerseTranslationRepository,
 )
 from mizan.domain.services.embedding_service import IEmbeddingService
+from mizan.domain.services.reranking_service import IRerankerService
 
 # Prefix for e5-style models: queries use 'query: ' prefix
 QUERY_PREFIX = "query: "
 
+logger = structlog.get_logger(__name__)
+
 
 class SemanticSearchService:
     """
-    Performs semantic search across library chunks and Quran verse embeddings.
+    Performs hybrid search across library chunks and Quran verse embeddings.
 
     The search pipeline:
     1. Embed the user's query with 'query: ' prefix (for e5 models)
-    2. Execute pgvector cosine similarity search against stored embeddings
-    3. Return ranked results with similarity scores
+    2. Execute pgvector cosine similarity search (vector path)
+    3. Execute tsvector full-text keyword search (keyword path)
+    4. Merge both result lists with Reciprocal Rank Fusion (RRF)
+    5. Return ranked results with fused scores
     """
 
     def __init__(
@@ -36,10 +46,16 @@ class SemanticSearchService:
         chunk_repo: ITextChunkRepository,
         verse_emb_repo: IVerseEmbeddingRepository,
         embedding_service: IEmbeddingService,
+        reranker: IRerankerService | None = None,
+        reranker_top_k: int = 30,
+        verse_translation_repo: IVerseTranslationRepository | None = None,
     ) -> None:
         self._chunks = chunk_repo
         self._verse_embs = verse_emb_repo
         self._embedder = embedding_service
+        self._reranker = reranker
+        self._reranker_top_k = reranker_top_k
+        self._verse_translations = verse_translation_repo
 
     async def search(
         self,
@@ -50,30 +66,29 @@ class SemanticSearchService:
         min_similarity: float = 0.5,
     ) -> list[SemanticSearchResult]:
         """
-        Search across Islamic texts by semantic similarity.
+        Hybrid search across Islamic texts combining vector + keyword retrieval.
 
         When source_types includes QURAN (or no filter is specified), this
         searches the pre-computed verse_embeddings table (6,236 Quran verses)
-        in addition to any library text_chunks, merging results by similarity.
+        in addition to any library text_chunks, merging results by RRF score.
 
         Args:
             query: Natural language query (any language — Arabic, Turkish, English)
             library_space_id: Restrict search to a specific library space
             source_types: Filter by source types (QURAN, TAFSIR, etc.)
             limit: Maximum number of results (default 10, max 100)
-            min_similarity: Minimum cosine similarity threshold (0.0–1.0)
+            min_similarity: Minimum cosine similarity threshold (0.0-1.0)
 
         Returns:
-            Ranked list of matching passages (highest similarity first)
+            Ranked list of matching passages (highest fused score first)
         """
         limit = min(limit, 100)
-
-        # Embed the query
-        query_embedding = await self._embedder.embed_text(QUERY_PREFIX + query)
+        # Fetch more candidates from each path so RRF has enough to merge
+        retrieval_limit = min(limit * 3, 100)
 
         # Determine which sources to search
         search_quran_verses = (
-            source_types is None  # No filter → search everything
+            source_types is None  # No filter -> search everything
             or SourceType.QURAN in source_types
         )
         # Filter out QURAN from library search (verse_embeddings handles it)
@@ -84,31 +99,240 @@ class SemanticSearchService:
         )
         search_library = source_types is None or bool(non_quran_types)
 
-        all_results: list[SemanticSearchResult] = []
+        # --- Vector retrieval paths ---
+        # NOTE: SQLAlchemy AsyncSession does NOT support concurrent queries
+        # on the same session, so we run all DB queries sequentially.
+        query_embedding = await self._embedder.embed_text(QUERY_PREFIX + query)
 
-        # 1. Search verse_embeddings for Quran verses
+        result_lists: list[list[SemanticSearchResult]] = []
+
         if search_quran_verses:
-            verse_results = await self._verse_embs.search_by_text(
-                query_embedding=query_embedding,
-                limit=limit,
-                min_similarity=min_similarity,
-            )
-            all_results.extend(verse_results)
+            try:
+                verse_results = await self._verse_embs.search_by_text(
+                    query_embedding=query_embedding,
+                    limit=retrieval_limit,
+                    min_similarity=min_similarity,
+                )
+                result_lists.append(verse_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="verse_vector", error=str(e))
 
-        # 2. Search library text_chunks (for non-Quran sources, or all if no filter)
         if search_library:
-            chunk_results = await self._chunks.semantic_search(
-                query_embedding=query_embedding,
-                library_space_id=library_space_id,
-                source_types=non_quran_types,
-                limit=limit,
-                min_similarity=min_similarity,
-            )
-            all_results.extend(chunk_results)
+            try:
+                chunk_results = await self._chunks.semantic_search(
+                    query_embedding=query_embedding,
+                    library_space_id=library_space_id,
+                    source_types=non_quran_types,
+                    limit=retrieval_limit,
+                    min_similarity=min_similarity,
+                )
+                result_lists.append(chunk_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="chunk_vector", error=str(e))
 
-        # Sort combined results by similarity (highest first) and trim to limit
-        all_results.sort(key=lambda r: r.similarity_score, reverse=True)
-        return all_results[:limit]
+        # --- Translation embedding retrieval path (cross-lingual) ---
+        if search_quran_verses and self._verse_translations is not None:
+            try:
+                translation_results = await self._verse_translations.search_by_text(
+                    query_embedding=query_embedding,
+                    limit=retrieval_limit,
+                    min_similarity=min_similarity,
+                )
+                result_lists.append(translation_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="translation_vector", error=str(e))
+
+        # --- Keyword retrieval paths (BM25 / tsvector) ---
+        if search_quran_verses:
+            try:
+                keyword_verse_results = await self._verse_embs.keyword_search_verses(
+                    query=query,
+                    limit=retrieval_limit,
+                )
+                result_lists.append(keyword_verse_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="verse_keyword", error=str(e))
+
+        if search_library:
+            try:
+                keyword_chunk_results = await self._chunks.keyword_search_chunks(
+                    query=query,
+                    source_types=non_quran_types,
+                    limit=retrieval_limit,
+                )
+                result_lists.append(keyword_chunk_results)
+            except Exception as e:
+                logger.warning("search_path_failed", path="chunk_keyword", error=str(e))
+
+        if not result_lists:
+            return []
+
+        # Fuse results with RRF
+        fused = self._rrf_fuse(*result_lists)
+
+        logger.debug(
+            "hybrid_search_complete",
+            query=query[:80],
+            num_paths=len(result_lists),
+            total_candidates=sum(len(r) for r in result_lists),
+            fused_count=len(fused),
+        )
+
+        # --- Cross-encoder re-ranking (optional) ---
+        if self._reranker is not None and fused:
+            fused = await self._rerank_results(query, fused, limit)
+        else:
+            fused = fused[:limit]
+
+        # Apply min_similarity filter on final fused/reranked scores
+        if min_similarity > 0:
+            fused = [r for r in fused if r.similarity_score >= min_similarity]
+
+        return fused
+
+    async def _rerank_results(
+        self,
+        query: str,
+        candidates: list[SemanticSearchResult],
+        limit: int,
+    ) -> list[SemanticSearchResult]:
+        """
+        Re-rank top candidates using the cross-encoder for precise scoring.
+
+        Takes the top reranker_top_k candidates from the fused list,
+        scores each (query, document) pair with the cross-encoder, and
+        returns the top `limit` results with updated similarity scores.
+        """
+        assert self._reranker is not None  # noqa: S101
+
+        # Split candidates: those with translations can be reranked,
+        # those without keep their RRF score. This prevents an English-only
+        # reranker from destroying good Arabic keyword matches.
+        to_rerank = candidates[: self._reranker_top_k]
+
+        rerank_indices: list[int] = []
+        rerank_contents: list[str] = []
+        keep_as_is: list[tuple[int, SemanticSearchResult]] = []
+
+        for i, r in enumerate(to_rerank):
+            translation = r.metadata.get("translation_text", "")
+            if translation:
+                rerank_indices.append(i)
+                rerank_contents.append(translation)
+            else:
+                keep_as_is.append((i, r))
+
+        # Rerank only the translatable candidates
+        reranked_scores: dict[int, float] = {}
+        if rerank_contents:
+            reranked = await self._reranker.rerank(
+                query=query,
+                documents=rerank_contents,
+                top_k=len(rerank_contents),
+            )
+            for rank_idx, (_, score) in enumerate(reranked):
+                orig_idx = rerank_indices[rank_idx]
+                reranked_scores[orig_idx] = score
+
+        logger.debug(
+            "reranking_complete",
+            query=query[:80],
+            candidates=len(to_rerank),
+            reranked=len(reranked_scores),
+            kept=len(keep_as_is),
+            model=self._reranker.model_name,
+        )
+
+        # Merge: reranked results get cross-encoder scores,
+        # non-reranked keep their original RRF scores
+        scored: list[tuple[float, SemanticSearchResult]] = []
+        for i, r in enumerate(to_rerank):
+            if i in reranked_scores:
+                scored.append((reranked_scores[i], r))
+            else:
+                scored.append((r.similarity_score, r))
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        results: list[SemanticSearchResult] = []
+        for score, r in scored[:limit]:
+            results.append(
+                SemanticSearchResult(
+                    chunk_id=r.chunk_id,
+                    text_source_id=r.text_source_id,
+                    source_title=r.source_title,
+                    source_type=r.source_type,
+                    reference=r.reference,
+                    content=r.content,
+                    similarity_score=round(score, 4),
+                    metadata=r.metadata,
+                )
+            )
+        return results
+
+    @staticmethod
+    def _rrf_fuse(
+        *result_lists: list[SemanticSearchResult],
+        k: int = 60,
+    ) -> list[SemanticSearchResult]:
+        """
+        Reciprocal Rank Fusion — merge multiple ranked lists.
+
+        Each result gets a score of 1/(k + rank + 1) from each list it appears in.
+        Results appearing in multiple lists get boosted. The parameter k (default 60)
+        controls how much weight is given to top-ranked vs lower-ranked items.
+
+        Args:
+            *result_lists: Variable number of ranked result lists to fuse.
+            k: RRF smoothing constant. Higher = more equal weighting across ranks.
+
+        Returns:
+            Merged list sorted by fused RRF score (normalized to 0-1 range).
+        """
+        scores: dict[str, float] = {}  # key = unique identifier
+        results_map: dict[str, SemanticSearchResult] = {}
+        metadata_map: dict[str, dict] = {}  # merged metadata across paths
+
+        for result_list in result_lists:
+            for rank, result in enumerate(result_list):
+                key = f"{result.source_type.value}:{result.reference}"
+                scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank + 1)
+                # Keep the first occurrence for base data
+                if key not in results_map:
+                    results_map[key] = result
+                    metadata_map[key] = dict(result.metadata)
+                else:
+                    # Merge metadata from later occurrences (e.g., translation_text)
+                    for mk, mv in result.metadata.items():
+                        if mk not in metadata_map[key] and mv:
+                            metadata_map[key][mk] = mv
+
+        # Sort by fused score descending
+        sorted_keys = sorted(scores, key=lambda x: scores[x], reverse=True)
+
+        # Normalize RRF score to 0-1 range for display
+        # Max possible RRF score = num_lists / (k + 1) (rank 0 in every list)
+        num_lists = len(result_lists)
+        max_rrf = num_lists / (k + 1) if num_lists > 0 else 1.0
+
+        fused: list[SemanticSearchResult] = []
+        for key in sorted_keys:
+            result = results_map[key]
+            normalized = min(scores[key] / max_rrf, 1.0) if max_rrf > 0 else 0.0
+            fused.append(
+                SemanticSearchResult(
+                    chunk_id=result.chunk_id,
+                    text_source_id=result.text_source_id,
+                    source_title=result.source_title,
+                    source_type=result.source_type,
+                    reference=result.reference,
+                    content=result.content,
+                    similarity_score=round(normalized, 4),
+                    metadata=metadata_map.get(key, result.metadata),
+                )
+            )
+        return fused
 
     async def find_similar_verses(
         self,

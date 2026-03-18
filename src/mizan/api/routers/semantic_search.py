@@ -19,21 +19,86 @@ from mizan.application.dtos.library_responses import (
     VerseEmbeddingStatsResponse,
 )
 from mizan.application.services.semantic_search_service import SemanticSearchService
+from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.embeddings.factory import get_embedding_service
 from mizan.infrastructure.persistence.library_repositories import (
     PostgresTextChunkRepository,
     PostgresVerseEmbeddingRepository,
+    PostgresVerseTranslationRepository,
 )
+from mizan.infrastructure.reranking import get_reranker_service
+
+from mizan.domain.entities.library import SemanticSearchResult
+from mizan.domain.enums.library_enums import SourceType
 
 router = APIRouter(prefix="/search")
 logger = structlog.get_logger(__name__)
 
 
+async def _fetch_translations_for_results(
+    session: DbSession,
+    results: list[SemanticSearchResult],
+) -> dict[str, dict[str, str]]:
+    """
+    Bulk-fetch EN/TR translations for QURAN results.
+
+    Returns a dict keyed by reference (e.g., "17:23") with translation fields:
+    {"translation_en": "...", "translation_tr": "..."}
+
+    Uses a single SQL query to avoid N+1 lookups.
+    """
+    from sqlalchemy import text as sa_text
+
+    # Collect verse references that need translations
+    verse_refs: set[tuple[int, int]] = set()
+    for r in results:
+        if r.source_type == SourceType.QURAN and ":" in r.reference:
+            parts = r.reference.split(":")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                verse_refs.add((int(parts[0]), int(parts[1])))
+
+    if not verse_refs:
+        return {}
+
+    # Build WHERE clause for all verse references
+    conditions = []
+    params: dict[str, object] = {}
+    for i, (s, v) in enumerate(verse_refs):
+        conditions.append(f"(surah_number = :s{i} AND verse_number = :v{i})")
+        params[f"s{i}"] = s
+        params[f"v{i}"] = v
+
+    where_sql = " OR ".join(conditions)
+    sql = sa_text(f"""
+        SELECT surah_number, verse_number, language, translation_text
+        FROM verse_translations
+        WHERE ({where_sql})
+        AND language IN ('en', 'tr')
+    """)  # nosec B608
+
+    result = await session.execute(sql, params)
+    rows = result.fetchall()
+
+    # Group by reference
+    translations: dict[str, dict[str, str]] = {}
+    for row in rows:
+        ref = f"{row.surah_number}:{row.verse_number}"
+        if ref not in translations:
+            translations[ref] = {}
+        translations[ref][f"translation_{row.language}"] = row.translation_text
+
+    return translations
+
+
 def _get_search_service(session: DbSession) -> SemanticSearchService:
+    settings = get_settings()
     return SemanticSearchService(
         chunk_repo=PostgresTextChunkRepository(session),
         verse_emb_repo=PostgresVerseEmbeddingRepository(session),
         embedding_service=get_embedding_service(),
+        verse_translation_repo=PostgresVerseTranslationRepository(session),
+        reranker=get_reranker_service(),
+        reranker_top_k=settings.reranker_top_k,
     )
 
 
@@ -74,6 +139,10 @@ async def semantic_search(
         limit=body.limit,
         min_similarity=body.min_similarity,
     )
+
+    # Enrich QURAN results with English/Turkish translations
+    translations = await _fetch_translations_for_results(session, results)
+
     embedder = get_embedding_service()
     return SemanticSearchResponse(
         query=body.query,
@@ -86,7 +155,10 @@ async def semantic_search(
                 reference=r.reference,
                 content=r.content,
                 similarity_score=round(r.similarity_score, 4),
-                metadata=r.metadata,
+                metadata={
+                    **r.metadata,
+                    **translations.get(r.reference, {}),
+                },
             )
             for r in results
         ],

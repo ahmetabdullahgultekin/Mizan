@@ -368,6 +368,44 @@ class TextChunkModel(Base):
         return f"<TextChunk {self.chunk_index}: {self.reference}>"
 
 
+class VerseTranslationModel(Base):
+    """
+    Database model for verse translations with semantic embeddings.
+
+    Stores English/Turkish translations from quran.com sources with
+    pgvector embeddings for cross-lingual semantic search.
+    """
+
+    __tablename__ = "verse_translations"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    verse_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("verses.id"), nullable=False
+    )
+    surah_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    verse_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    language: Mapped[str] = mapped_column(String(10), nullable=False)
+    translation_text: Mapped[str] = mapped_column(Text, nullable=False)
+    source_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    resource_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    model_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    verse: Mapped["VerseModel"] = relationship("VerseModel")
+
+    __table_args__ = (
+        UniqueConstraint("verse_id", "language", "resource_id", name="uq_verse_translation"),
+        Index("ix_verse_translations_location", "surah_number", "verse_number"),
+        Index("ix_verse_translations_language", "language"),
+        # HNSW index for fast ANN search created in migration
+    )
+
+    def __repr__(self) -> str:
+        return f"<VerseTranslation {self.surah_number}:{self.verse_number} [{self.language}]>"
+
+
 class VerseEmbeddingModel(Base):
     """
     Semantic embedding for a Quranic verse.

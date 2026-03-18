@@ -16,6 +16,7 @@ from mizan.domain.entities.library import (
     TextChunk,
     TextSource,
     VerseEmbedding,
+    VerseTranslation,
 )
 from mizan.domain.enums.library_enums import IndexingStatus, SourceType
 
@@ -143,6 +144,26 @@ class ITextChunkRepository(ABC):
         ...
 
     @abstractmethod
+    async def keyword_search_chunks(
+        self,
+        query: str,
+        source_types: list[SourceType] | None = None,
+        limit: int = 20,
+    ) -> list[SemanticSearchResult]:
+        """
+        Full-text keyword search on text_chunks.content using tsvector/GIN.
+
+        Args:
+            query: Plain-text search query (Arabic, etc.)
+            source_types: Optional filter by source type(s)
+            limit: Maximum number of results
+
+        Returns:
+            Ranked list of results (highest ts_rank first)
+        """
+        ...
+
+    @abstractmethod
     async def delete_by_source(self, source_id: UUID) -> int:
         """Delete all chunks for a source. Returns number deleted."""
         ...
@@ -217,6 +238,79 @@ class IVerseEmbeddingRepository(ABC):
         ...
 
     @abstractmethod
+    async def keyword_search_verses(
+        self,
+        query: str,
+        limit: int = 20,
+    ) -> list[SemanticSearchResult]:
+        """
+        Full-text keyword search on verses.text_no_tashkeel using tsvector/GIN.
+
+        Also does a LIKE fallback for direct substring matching of short terms.
+
+        Args:
+            query: Plain-text search query (Arabic, etc.)
+            limit: Maximum number of results
+
+        Returns:
+            Ranked list of results (highest ts_rank first)
+        """
+        ...
+
+    @abstractmethod
     async def get_total_count(self, model_name: str | None = None) -> int:
         """Get total number of verse embeddings, optionally filtered by model."""
+        ...
+
+
+class IVerseTranslationRepository(ABC):
+    """Port for VerseTranslation persistence and cross-lingual vector search."""
+
+    @abstractmethod
+    async def upsert_batch(self, translations: list[VerseTranslation]) -> int:
+        """Insert or update a batch of verse translations. Returns count."""
+        ...
+
+    @abstractmethod
+    async def search_by_text(
+        self,
+        query_embedding: list[float],
+        language: str | None = None,
+        limit: int = 10,
+        min_similarity: float = 0.0,
+    ) -> list[SemanticSearchResult]:
+        """
+        Search translation embeddings by a free-text query embedding.
+
+        JOINs with the verses table to return Arabic text_uthmani as content,
+        while matching against translation embeddings for cross-lingual search.
+
+        Args:
+            query_embedding: Embedding of the search query text
+            language: Optional language filter ('en', 'tr')
+            limit: Maximum number of results
+            min_similarity: Minimum cosine similarity threshold (0.0-1.0)
+
+        Returns:
+            Ranked list of results (highest similarity first)
+        """
+        ...
+
+    @abstractmethod
+    async def get_unembedded(
+        self, language: str | None = None,
+    ) -> list[VerseTranslation]:
+        """Retrieve translations that do not yet have embeddings."""
+        ...
+
+    @abstractmethod
+    async def update_embeddings_batch(
+        self, updates: list[tuple[UUID, list[float], str]],
+    ) -> None:
+        """
+        Store embeddings for multiple translations at once.
+
+        Args:
+            updates: List of (translation_id, embedding_vector, model_name) tuples
+        """
         ...

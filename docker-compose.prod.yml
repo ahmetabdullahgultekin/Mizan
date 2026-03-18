@@ -28,6 +28,7 @@ services:
       EMBEDDING_MODEL: intfloat/multilingual-e5-base
       EMBEDDING_DIMENSION: 768
       EMBEDDING_BATCH_SIZE: 32
+      ENABLE_RERANKING: ${ENABLE_RERANKING:-false}
     volumes:
       - ./data:/app/data:ro
       - mizan-hf-cache:/app/.cache/huggingface

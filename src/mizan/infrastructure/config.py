@@ -155,6 +155,35 @@ class Settings(BaseSettings):
     )
 
     # ==========================================================================
+    # Cross-Encoder Re-ranking (Phase 3)
+    # ==========================================================================
+    enable_reranking: bool = Field(
+        default=False,
+        description=(
+            "Enable cross-encoder re-ranking of search results. "
+            "When enabled, top candidates are re-scored by a cross-encoder "
+            "model for dramatically improved result quality."
+        ),
+    )
+    reranker_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
+        description=(
+            "Cross-encoder model for re-ranking. Default is ms-marco-MiniLM-L-6-v2 "
+            "(~80MB, fast, no custom code). For better multilingual support, use "
+            "jinaai/jina-reranker-v2-base-multilingual (requires einops + trust_remote_code)."
+        ),
+    )
+    reranker_top_k: int = Field(
+        default=30,
+        ge=1,
+        le=200,
+        description=(
+            "Number of top candidates to pass to the cross-encoder for re-ranking. "
+            "Higher values improve recall but increase latency."
+        ),
+    )
+
+    # ==========================================================================
     # Observability — Sentry
     # ==========================================================================
     sentry_dsn: str = Field(
