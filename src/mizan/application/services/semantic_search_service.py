@@ -184,6 +184,10 @@ class SemanticSearchService:
         else:
             fused = fused[:limit]
 
+        # Apply min_similarity filter on final fused/reranked scores
+        if min_similarity > 0:
+            fused = [r for r in fused if r.similarity_score >= min_similarity]
+
         return fused
 
     async def _rerank_results(
