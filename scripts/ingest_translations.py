@@ -75,8 +75,8 @@ TRANSLATION_RESOURCES = {
         "source_name": "Sahih International",
     },
     "tr": {
-        "resource_id": 77,
-        "source_name": "Diyanet",
+        "resource_id": 52,
+        "source_name": "Elmalili Hamdi Yazir",
     },
 }
 
