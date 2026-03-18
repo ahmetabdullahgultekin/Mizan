@@ -640,15 +640,46 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         "patience", "mother", "father",  # too generic in English
     })
 
+    # Common Arabic prefixes (prepositions, conjunctions, articles)
+    _ARABIC_PREFIXES = ("بال", "وال", "فال", "كال", "لل", "ال", "وب", "فب", "و", "ب", "ف", "ك", "ل")
+    # Common Arabic suffixes (pronouns, dual/plural markers)
+    _ARABIC_SUFFIXES = ("ين", "ون", "ات", "يه", "ها", "هم", "كم", "هن", "تك", "ان", "يك", "نا")
+
+    @classmethod
+    def _extract_arabic_root(cls, word: str) -> str | None:
+        """
+        Extract a rough Arabic root by stripping common prefixes and suffixes.
+
+        This is a lightweight stemmer — not linguistically perfect, but good
+        enough to find that والدين, بولديه, and ولديك all share the root ولد.
+        Returns the stem if 3+ chars, None otherwise.
+        """
+        stem = word
+        # Strip one prefix (longest match first — order matters)
+        for p in cls._ARABIC_PREFIXES:
+            if stem.startswith(p) and len(stem) > len(p) + 2:
+                stem = stem[len(p):]
+                break
+        # Strip one suffix
+        for s in cls._ARABIC_SUFFIXES:
+            if stem.endswith(s) and len(stem) > len(s) + 2:
+                stem = stem[:-len(s)]
+                break
+        return stem if len(stem) >= 3 else None
+
     @staticmethod
     def _arabic_search_variants(query: str) -> list[str]:
         """
         Generate per-word search variants for Arabic Quranic orthography.
 
-        Uthmani script drops alef in many words (والدين → ولدين), uses
-        alef-wasla (ٱ) instead of plain alef (ا), and has other differences.
-        Returns individual word variants (not full-query strings) to avoid
-        matching common words like على that appear in nearly every verse.
+        For each word in the query:
+        1. Original word (for exact matches)
+        2. Alef-normalized version (ٱأإآ → ا)
+        3. Alef-stripped version (Uthmani often drops alef)
+        4. Root extraction (strip prefix+suffix to find the 3-letter core)
+
+        The root is the most important variant — it catches all morphological
+        forms: والدين, بولديه, ولديك, الوالدات all share root ولد.
         """
         alef_chars = "ٱأإآ"
         plain_alef = "ا"
@@ -676,11 +707,20 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             if len(stripped) >= 3:
                 variants.add(stripped)
 
-            # Also try removing leading ب/و/ف/ل prefixes from stripped
-            # to catch "بولديه" matching "ولد" root
-            for prefix in ("ب", "و", "ف", "ل", "بال", "وال", "فال", "لل"):
-                if stripped.startswith(prefix) and len(stripped) > len(prefix) + 2:
-                    variants.add(stripped[len(prefix):])
+            # Extract root by stripping prefixes + suffixes
+            # This is the KEY for Arabic morphology: والدين → ولد
+            root = PostgresVerseEmbeddingRepository._extract_arabic_root(stripped)
+            if root and root not in stop_words:
+                variants.add(root)
+
+            # Also try root extraction on the alef-normalized form
+            root_norm = PostgresVerseEmbeddingRepository._extract_arabic_root(normalized)
+            if root_norm and root_norm not in stop_words:
+                variants.add(root_norm)
+                # And strip alef from that root too
+                root_no_alef = root_norm.replace(plain_alef, "")
+                if len(root_no_alef) >= 3:
+                    variants.add(root_no_alef)
 
         return [v for v in variants if len(v) >= 3 and v not in stop_words]
 
@@ -716,6 +756,16 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
 
         ilike_sql = " OR ".join(ilike_conditions) if ilike_conditions else "FALSE"
 
+        # Build per-variant CASE expressions that count how many variants match.
+        # Verses matching more query words rank higher (e.g., ولد + صبر > ولد alone).
+        match_count_parts = []
+        for i in range(len(search_variants)):
+            param_name = f"variant_{i}"
+            match_count_parts.append(
+                f"CASE WHEN v.text_no_tashkeel ILIKE '%' || :{param_name} || '%' THEN 1 ELSE 0 END"
+            )
+        match_count_sql = " + ".join(match_count_parts) if match_count_parts else "0"
+
         sql = sa_text(f"""
             SELECT
                 v.id             AS chunk_id,
@@ -726,7 +776,7 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
                 v.text_uthmani   AS content,
                 GREATEST(
                     ts_rank(v.text_search_vector, plainto_tsquery('simple', :query)),
-                    CASE WHEN {ilike_sql} THEN 0.1 ELSE 0.0 END
+                    ({match_count_sql}) * 0.1
                 ) AS rank_score
             FROM verses v
             WHERE v.text_search_vector @@ plainto_tsquery('simple', :query)

@@ -124,19 +124,25 @@ def fetch_translations_for_chapter(
 
             translations = data.get("translations", [])
             result: dict[int, str] = {}
-            for entry in translations:
-                verse_key = entry.get("verse_key", "")
+            for idx, entry in enumerate(translations):
                 text = entry.get("text", "")
-                if not verse_key or not text:
+                if not text:
                     continue
 
-                # verse_key is "surah:verse" e.g. "1:1"
-                parts = verse_key.split(":")
-                if len(parts) == 2:
-                    verse_num = int(parts[1])
-                    clean_text = strip_html(text)
-                    if clean_text:
-                        result[verse_num] = clean_text
+                # The API may include verse_key or verse_number,
+                # or entries may be in sequential order (1-based).
+                verse_key = entry.get("verse_key", "")
+                if verse_key and ":" in verse_key:
+                    verse_num = int(verse_key.split(":")[1])
+                elif "verse_number" in entry:
+                    verse_num = int(entry["verse_number"])
+                else:
+                    # Entries are in order, 1-based
+                    verse_num = idx + 1
+
+                clean_text = strip_html(text)
+                if clean_text:
+                    result[verse_num] = clean_text
 
             return result
 
