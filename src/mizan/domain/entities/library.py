@@ -207,6 +207,42 @@ class VerseEmbedding:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class VerseTranslation:
+    """
+    A verse translation with optional semantic embedding.
+
+    Stores translations in different languages (en, tr) from known sources
+    (e.g., Sahih International, Diyanet) with embeddings for cross-lingual
+    semantic search.
+
+    Attributes:
+        id: Unique identifier
+        verse_id: FK to verses.id
+        surah_number: Denormalized for fast filtering
+        verse_number: Denormalized for fast filtering
+        language: ISO language code ('en', 'tr')
+        translation_text: The translation text
+        source_name: Human-readable source name (e.g., 'Sahih International')
+        resource_id: quran.com resource ID
+        embedding: Semantic embedding vector (nullable until embedded)
+        model_name: Which model produced this embedding
+        created_at: When this translation was stored
+    """
+
+    id: UUID
+    verse_id: UUID
+    surah_number: int
+    verse_number: int
+    language: str
+    translation_text: str
+    source_name: str
+    resource_id: int
+    embedding: list[float] | None
+    model_name: str | None
+    created_at: datetime
+
+
 @dataclass
 class SemanticSearchResult:
     """

@@ -19,21 +19,28 @@ from mizan.application.dtos.library_responses import (
     VerseEmbeddingStatsResponse,
 )
 from mizan.application.services.semantic_search_service import SemanticSearchService
+from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.embeddings.factory import get_embedding_service
 from mizan.infrastructure.persistence.library_repositories import (
     PostgresTextChunkRepository,
     PostgresVerseEmbeddingRepository,
+    PostgresVerseTranslationRepository,
 )
+from mizan.infrastructure.reranking import get_reranker_service
 
 router = APIRouter(prefix="/search")
 logger = structlog.get_logger(__name__)
 
 
 def _get_search_service(session: DbSession) -> SemanticSearchService:
+    settings = get_settings()
     return SemanticSearchService(
         chunk_repo=PostgresTextChunkRepository(session),
         verse_emb_repo=PostgresVerseEmbeddingRepository(session),
         embedding_service=get_embedding_service(),
+        verse_translation_repo=PostgresVerseTranslationRepository(session),
+        reranker=get_reranker_service(),
+        reranker_top_k=settings.reranker_top_k,
     )
 
 

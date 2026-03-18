@@ -20,6 +20,7 @@ from mizan.domain.entities.library import (
     TextChunk,
     TextSource,
     VerseEmbedding,
+    VerseTranslation,
 )
 from mizan.domain.enums.library_enums import IndexingStatus, SourceType
 from mizan.domain.repositories.library_interfaces import (
@@ -27,12 +28,14 @@ from mizan.domain.repositories.library_interfaces import (
     ITextChunkRepository,
     ITextSourceRepository,
     IVerseEmbeddingRepository,
+    IVerseTranslationRepository,
 )
 from mizan.infrastructure.persistence.models import (
     LibrarySpaceModel,
     TextChunkModel,
     TextSourceModel,
     VerseEmbeddingModel,
+    VerseTranslationModel,
 )
 
 logger = structlog.get_logger(__name__)
@@ -368,6 +371,87 @@ class PostgresTextChunkRepository(ITextChunkRepository):
             for row in rows
         ]
 
+    async def keyword_search_chunks(
+        self,
+        query: str,
+        source_types: list[SourceType] | None = None,
+        limit: int = 20,
+    ) -> list[SemanticSearchResult]:
+        """
+        Full-text keyword search on text_chunks.content using tsvector + GIN.
+
+        Uses plainto_tsquery('simple', query) for tsvector matching and
+        a LIKE fallback for direct substring matching on short queries.
+        The LIKE path normalizes alef variants (ٱ أ إ آ → ا) on both sides.
+        """
+        from sqlalchemy import text as sa_text
+
+        params: dict[str, object] = {"query": query, "limit": limit}
+
+        # Normalize alef variants for ILIKE comparison
+        _norm = (
+            "REPLACE(REPLACE(REPLACE(REPLACE("
+            "{col}"
+            ", 'ٱ', 'ا'), 'أ', 'ا'), 'إ', 'ا'), 'آ', 'ا')"
+        )
+        norm_content = _norm.format(col="tc.content")
+        norm_query = _norm.format(col=":query")
+
+        where_clauses = [
+            f"(tc.content_search_vector @@ plainto_tsquery('simple', :query)"
+            f" OR {norm_content} ILIKE '%' || {norm_query} || '%')"
+        ]
+
+        if source_types:
+            type_values = [st.value for st in source_types]
+            placeholders = ", ".join(f":stype_{i}" for i in range(len(type_values)))
+            where_clauses.append(f"ts.source_type IN ({placeholders})")
+            for i, val in enumerate(type_values):
+                params[f"stype_{i}"] = val
+
+        where_sql = " AND ".join(where_clauses)
+
+        sql = sa_text(f"""
+            SELECT
+                tc.id         AS chunk_id,
+                tc.text_source_id,
+                COALESCE(ts.title_arabic, '') AS source_title,
+                ts.source_type,
+                tc.reference,
+                tc.content,
+                GREATEST(
+                    ts_rank(tc.content_search_vector, plainto_tsquery('simple', :query)),
+                    CASE WHEN {norm_content} ILIKE '%' || {norm_query} || '%'
+                         THEN 0.1 ELSE 0.0 END
+                ) AS rank_score,
+                tc.metadata
+            FROM text_chunks tc
+            JOIN text_sources ts ON tc.text_source_id = ts.id
+            WHERE {where_sql}
+            ORDER BY rank_score DESC
+            LIMIT :limit
+        """)  # nosec B608
+
+        result = await self._session.execute(sql, params)
+        rows = result.fetchall()
+
+        # Normalize rank scores to 0-1 range
+        max_rank = max((float(row.rank_score) for row in rows), default=1.0) or 1.0
+
+        return [
+            SemanticSearchResult(
+                chunk_id=row.chunk_id,
+                text_source_id=row.text_source_id,
+                source_title=row.source_title,
+                source_type=SourceType(row.source_type),
+                reference=row.reference,
+                content=row.content,
+                similarity_score=round(float(row.rank_score) / max_rank, 4),
+                metadata=row.metadata or {},
+            )
+            for row in rows
+        ]
+
     async def delete_by_source(self, source_id: UUID) -> int:
         result = await self._session.execute(
             delete(TextChunkModel).where(TextChunkModel.text_source_id == source_id)
@@ -536,6 +620,78 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             for row in rows
         ]
 
+    async def keyword_search_verses(
+        self,
+        query: str,
+        limit: int = 20,
+    ) -> list[SemanticSearchResult]:
+        """
+        Full-text keyword search on verses.text_no_tashkeel using tsvector + GIN.
+
+        Uses plainto_tsquery('simple', query) for tsvector matching and
+        a LIKE fallback for direct substring matching of short terms.
+        The LIKE path normalizes alef variants (ٱ أ إ آ → ا) on both sides
+        so that user queries match Uthmani-script Arabic text.
+        Returns results as SemanticSearchResult for unified search merging.
+        """
+        from sqlalchemy import text as sa_text
+
+        params: dict[str, object] = {"query": query, "limit": limit}
+
+        # _norm_alef is a SQL expression that normalizes alef variants
+        # (alef-wasla ٱ, alef-hamza-above أ, alef-hamza-below إ, alef-madda آ)
+        # to plain alef ا for consistent substring matching.
+        _norm = (
+            "REPLACE(REPLACE(REPLACE(REPLACE("
+            "{col}"
+            ", 'ٱ', 'ا'), 'أ', 'ا'), 'إ', 'ا'), 'آ', 'ا')"
+        )
+        norm_text = _norm.format(col="v.text_no_tashkeel")
+        norm_query = _norm.format(col=":query")
+
+        sql = sa_text(f"""
+            SELECT
+                v.id             AS chunk_id,
+                v.id             AS text_source_id,
+                'القرآن الكريم'  AS source_title,
+                'QURAN'          AS source_type,
+                (v.surah_number || ':' || v.verse_number) AS reference,
+                v.text_uthmani   AS content,
+                GREATEST(
+                    ts_rank(v.text_search_vector, plainto_tsquery('simple', :query)),
+                    CASE WHEN {norm_text} ILIKE '%' || {norm_query} || '%'
+                         THEN 0.1 ELSE 0.0 END
+                ) AS rank_score
+            FROM verses v
+            WHERE v.text_search_vector @@ plainto_tsquery('simple', :query)
+               OR {norm_text} ILIKE '%' || {norm_query} || '%'
+            ORDER BY rank_score DESC
+            LIMIT :limit
+        """)  # nosec B608
+
+        result = await self._session.execute(sql, params)
+        rows = result.fetchall()
+
+        # Normalize rank scores to 0-1 range
+        max_rank = max((float(row.rank_score) for row in rows), default=1.0) or 1.0
+
+        return [
+            SemanticSearchResult(
+                chunk_id=row.chunk_id,
+                text_source_id=row.text_source_id,
+                source_title=row.source_title,
+                source_type=SourceType(row.source_type),
+                reference=row.reference,
+                content=row.content,
+                similarity_score=round(float(row.rank_score) / max_rank, 4),
+                metadata={
+                    "surah_number": int(row.reference.split(":")[0]),
+                    "verse_number": int(row.reference.split(":")[1]),
+                },
+            )
+            for row in rows
+        ]
+
     async def get_total_count(self, model_name: str | None = None) -> int:
         from sqlalchemy import func
 
@@ -556,3 +712,170 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             stmt = stmt.where(VerseEmbeddingModel.model_name == model_name)
         result = await self._session.execute(stmt)
         return {(int(row.surah_number), int(row.verse_number)) for row in result.fetchall()}
+
+
+# ---------------------------------------------------------------------------
+# Mapping helper – VerseTranslation
+# ---------------------------------------------------------------------------
+
+
+def _verse_trans_to_domain(m: VerseTranslationModel) -> VerseTranslation:
+    return VerseTranslation(
+        id=m.id,
+        verse_id=m.verse_id,
+        surah_number=m.surah_number,
+        verse_number=m.verse_number,
+        language=m.language,
+        translation_text=m.translation_text,
+        source_name=m.source_name,
+        resource_id=m.resource_id,
+        embedding=list(m.embedding) if m.embedding is not None else None,
+        model_name=m.model_name,
+        created_at=m.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
+# VerseTranslation Repository
+# ---------------------------------------------------------------------------
+
+
+class PostgresVerseTranslationRepository(IVerseTranslationRepository):
+    """PostgreSQL + pgvector verse translation repository for cross-lingual search."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert_batch(self, translations: list[VerseTranslation]) -> int:
+        """Insert or update a batch of verse translations. Returns count."""
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        for t in translations:
+            stmt = pg_insert(VerseTranslationModel).values(
+                id=t.id,
+                verse_id=t.verse_id,
+                surah_number=t.surah_number,
+                verse_number=t.verse_number,
+                language=t.language,
+                translation_text=t.translation_text,
+                source_name=t.source_name,
+                resource_id=t.resource_id,
+                embedding=t.embedding,
+                model_name=t.model_name,
+                created_at=t.created_at,
+            )
+            stmt = stmt.on_conflict_do_update(
+                constraint="uq_verse_translation",
+                set_={
+                    "translation_text": stmt.excluded.translation_text,
+                    "source_name": stmt.excluded.source_name,
+                    "created_at": stmt.excluded.created_at,
+                },
+            )
+            await self._session.execute(stmt)
+
+        await self._session.flush()
+        logger.debug("verse_translations_upserted", count=len(translations))
+        return len(translations)
+
+    async def search_by_text(
+        self,
+        query_embedding: list[float],
+        language: str | None = None,
+        limit: int = 10,
+        min_similarity: float = 0.0,
+    ) -> list[SemanticSearchResult]:
+        """
+        Search translation embeddings and return Arabic text_uthmani as content.
+
+        Matches against translation embeddings (same-language matching) but
+        returns the original Arabic verse text so the user sees Quranic text.
+        """
+        from sqlalchemy import text as sa_text
+
+        clean_embedding = [float(x) for x in query_embedding]
+        params: dict[str, object] = {"embedding": str(clean_embedding), "limit": limit}
+
+        where_clauses = ["vt.embedding IS NOT NULL"]
+
+        if language is not None:
+            where_clauses.append("vt.language = :language")
+            params["language"] = language
+
+        if min_similarity > 0:
+            max_distance = 1.0 - min_similarity
+            where_clauses.append(
+                f"(vt.embedding <=> CAST(:embedding AS vector)) < {max_distance}"
+            )
+
+        where_sql = " AND ".join(where_clauses)
+
+        sql = sa_text(f"""
+            SELECT
+                vt.id            AS chunk_id,
+                vt.verse_id      AS text_source_id,
+                vt.source_name   AS source_title,
+                'QURAN'          AS source_type,
+                (vt.surah_number || ':' || vt.verse_number) AS reference,
+                v.text_uthmani   AS content,
+                (1 - (vt.embedding <=> CAST(:embedding AS vector))) AS similarity_score,
+                vt.language      AS trans_language,
+                vt.translation_text AS translation_text
+            FROM verse_translations vt
+            JOIN verses v ON v.surah_number = vt.surah_number
+                         AND v.verse_number = vt.verse_number
+            WHERE {where_sql}
+            ORDER BY vt.embedding <=> CAST(:embedding AS vector)
+            LIMIT :limit
+        """)  # nosec B608
+
+        result = await self._session.execute(sql, params)
+        rows = result.fetchall()
+
+        return [
+            SemanticSearchResult(
+                chunk_id=row.chunk_id,
+                text_source_id=row.text_source_id,
+                source_title=row.source_title,
+                source_type=SourceType(row.source_type),
+                reference=row.reference,
+                content=row.content,
+                similarity_score=float(row.similarity_score),
+                metadata={
+                    "surah_number": int(row.reference.split(":")[0]),
+                    "verse_number": int(row.reference.split(":")[1]),
+                    "translation_language": row.trans_language,
+                    "translation_text": row.translation_text,
+                },
+            )
+            for row in rows
+        ]
+
+    async def get_unembedded(
+        self, language: str | None = None,
+    ) -> list[VerseTranslation]:
+        """Retrieve translations that do not yet have embeddings."""
+        stmt = select(VerseTranslationModel).where(
+            VerseTranslationModel.embedding.is_(None),
+        )
+        if language is not None:
+            stmt = stmt.where(VerseTranslationModel.language == language)
+        stmt = stmt.order_by(
+            VerseTranslationModel.surah_number,
+            VerseTranslationModel.verse_number,
+        )
+        result = await self._session.execute(stmt)
+        return [_verse_trans_to_domain(m) for m in result.scalars().all()]
+
+    async def update_embeddings_batch(
+        self, updates: list[tuple[UUID, list[float], str]],
+    ) -> None:
+        """Store embeddings for multiple translations at once."""
+        for trans_id, embedding, model_name in updates:
+            await self._session.execute(
+                update(VerseTranslationModel)
+                .where(VerseTranslationModel.id == trans_id)
+                .values(embedding=embedding, model_name=model_name)
+            )
+        await self._session.flush()
+        logger.debug("verse_translation_embeddings_updated", count=len(updates))
