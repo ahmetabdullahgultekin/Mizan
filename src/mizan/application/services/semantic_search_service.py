@@ -202,38 +202,68 @@ class SemanticSearchService:
         """
         assert self._reranker is not None  # noqa: S101
 
-        # Take top candidates for re-ranking (cross-encoder is expensive)
+        # Split candidates: those with translations can be reranked,
+        # those without keep their RRF score. This prevents an English-only
+        # reranker from destroying good Arabic keyword matches.
         to_rerank = candidates[: self._reranker_top_k]
-        contents = [r.content for r in to_rerank]
 
-        reranked = await self._reranker.rerank(
-            query=query,
-            documents=contents,
-            top_k=limit,
-        )
+        rerank_indices: list[int] = []
+        rerank_contents: list[str] = []
+        keep_as_is: list[tuple[int, SemanticSearchResult]] = []
+
+        for i, r in enumerate(to_rerank):
+            translation = r.metadata.get("translation_text", "")
+            if translation:
+                rerank_indices.append(i)
+                rerank_contents.append(translation)
+            else:
+                keep_as_is.append((i, r))
+
+        # Rerank only the translatable candidates
+        reranked_scores: dict[int, float] = {}
+        if rerank_contents:
+            reranked = await self._reranker.rerank(
+                query=query,
+                documents=rerank_contents,
+                top_k=len(rerank_contents),
+            )
+            for rank_idx, (_, score) in enumerate(reranked):
+                orig_idx = rerank_indices[rank_idx]
+                reranked_scores[orig_idx] = score
 
         logger.debug(
             "reranking_complete",
             query=query[:80],
             candidates=len(to_rerank),
-            reranked=len(reranked),
+            reranked=len(reranked_scores),
+            kept=len(keep_as_is),
             model=self._reranker.model_name,
         )
 
-        # Build reordered results with updated scores
+        # Merge: reranked results get cross-encoder scores,
+        # non-reranked keep their original RRF scores
+        scored: list[tuple[float, SemanticSearchResult]] = []
+        for i, r in enumerate(to_rerank):
+            if i in reranked_scores:
+                scored.append((reranked_scores[i], r))
+            else:
+                scored.append((r.similarity_score, r))
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+
         results: list[SemanticSearchResult] = []
-        for orig_idx, score in reranked:
-            original = to_rerank[orig_idx]
+        for score, r in scored[:limit]:
             results.append(
                 SemanticSearchResult(
-                    chunk_id=original.chunk_id,
-                    text_source_id=original.text_source_id,
-                    source_title=original.source_title,
-                    source_type=original.source_type,
-                    reference=original.reference,
-                    content=original.content,
+                    chunk_id=r.chunk_id,
+                    text_source_id=r.text_source_id,
+                    source_title=r.source_title,
+                    source_type=r.source_type,
+                    reference=r.reference,
+                    content=r.content,
                     similarity_score=round(score, 4),
-                    metadata=original.metadata,
+                    metadata=r.metadata,
                 )
             )
         return results
@@ -259,14 +289,21 @@ class SemanticSearchService:
         """
         scores: dict[str, float] = {}  # key = unique identifier
         results_map: dict[str, SemanticSearchResult] = {}
+        metadata_map: dict[str, dict] = {}  # merged metadata across paths
 
         for result_list in result_lists:
             for rank, result in enumerate(result_list):
                 key = f"{result.source_type.value}:{result.reference}"
                 scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank + 1)
-                # Keep the first occurrence (usually has richer metadata)
+                # Keep the first occurrence for base data
                 if key not in results_map:
                     results_map[key] = result
+                    metadata_map[key] = dict(result.metadata)
+                else:
+                    # Merge metadata from later occurrences (e.g., translation_text)
+                    for mk, mv in result.metadata.items():
+                        if mk not in metadata_map[key] and mv:
+                            metadata_map[key][mk] = mv
 
         # Sort by fused score descending
         sorted_keys = sorted(scores, key=lambda x: scores[x], reverse=True)
@@ -289,7 +326,7 @@ class SemanticSearchService:
                     reference=result.reference,
                     content=result.content,
                     similarity_score=round(normalized, 4),
-                    metadata=result.metadata,
+                    metadata=metadata_map.get(key, result.metadata),
                 )
             )
         return fused

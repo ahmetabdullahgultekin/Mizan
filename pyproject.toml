@@ -111,6 +111,7 @@ ml = [
     "transformers>=4.36.0",
     "torch>=2.1.0",
     "sentence-transformers>=2.2.0",
+    "einops>=0.7.0",
     "numpy>=1.26.0",
     "scipy>=1.11.0",
     # Vector database support

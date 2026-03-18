@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml README.md ./
 # Install CPU-only PyTorch first (saves ~1.5GB vs full CUDA), then project deps
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir sentence-transformers && \
+    pip install --no-cache-dir sentence-transformers einops && \
     pip install --no-cache-dir -e .
 
 # Production stage

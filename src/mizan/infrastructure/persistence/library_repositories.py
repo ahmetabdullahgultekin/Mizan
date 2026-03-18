@@ -640,31 +640,133 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         "patience", "mother", "father",  # too generic in English
     })
 
-    # Common Arabic prefixes (prepositions, conjunctions, articles)
-    _ARABIC_PREFIXES = ("بال", "وال", "فال", "كال", "لل", "ال", "وب", "فب", "و", "ب", "ف", "ك", "ل")
-    # Common Arabic suffixes (pronouns, dual/plural markers)
-    _ARABIC_SUFFIXES = ("ين", "ون", "ات", "يه", "ها", "هم", "كم", "هن", "تك", "ان", "يك", "نا")
+    # -----------------------------------------------------------------------
+    # ISRI-based Arabic Stemmer (pure Python, no NLTK dependency)
+    #
+    # Based on the ISRI stemmer algorithm by Kazem Taghva, Rania Elkhoury,
+    # and Jeffrey Coombs. Uses an exhaustive multi-strategy approach:
+    # try all combinations of prefix/suffix/augmentation stripping and
+    # infixed-alef removal, then select the best 3-letter root candidate.
+    #
+    # Handles Arabic morphology including:
+    # - Definite article (ال) and conjunction prefixes (و، ف، ب، ك، ل)
+    # - Compound prefixes (بال، وال، فال، كال، لل)
+    # - Pronoun suffixes (ه، ها، هم، هن، ك، كم، كن، نا)
+    # - Plural/dual suffixes (ون، ين، ات، ان، تين، تان)
+    # - Ta marbuta (ة) and alef maqsura (ى)
+    # - Verbal/augmentation prefixes (أ، م، ن، ت، ي)
+    # - Infixed alef in فاعل and فعال patterns
+    # -----------------------------------------------------------------------
+
+    # Compound prefixes (article + preposition combinations)
+    _ISRI_P1 = ("بال", "وال", "فال", "كال", "لل", "ال")
+    # Single-char prefixes (conjunctions, prepositions)
+    _ISRI_P2 = ("و", "ف", "ب", "ك", "ل")
+    # Suffixes ordered by length: 3-char, 2-char, 1-char
+    _ISRI_S3 = ("تين", "تان")
+    _ISRI_S2 = ("ون", "ين", "ات", "ان", "ها", "هم", "هن", "كم", "كن", "نا", "يه", "يك")
+    _ISRI_S1 = ("ة", "ه", "ي", "ك", "ت", "ا", "ن")
+    _ISRI_ALL_SUFFIXES = _ISRI_S3 + _ISRI_S2 + _ISRI_S1
+    # Augmentation prefixes (verbal forms, participles)
+    _ISRI_AUG = ("ا", "م", "ن", "ت", "ي")
+
+    @classmethod
+    def _try_reduce_to_root(cls, s: str) -> list[str]:
+        """
+        Recursively try all ways to reduce a stem to a 3-letter root.
+
+        Attempts augmentation prefix removal, suffix removal, and
+        infixed-alef removal (فاعل→فعل, فعال→فعل patterns).
+        """
+        if len(s) < 3:
+            return []
+        if len(s) == 3:
+            return [s]
+        results: list[str] = []
+        # Infixed alef at position 1 (فاعل → فعل, e.g. والد→ولد, صابر→صبر)
+        if len(s) == 4 and s[1] == "\u0627":
+            results.append(s[0] + s[2:])
+        # Infixed alef at position 2 (فعال → فعل, e.g. حسان→حسن, جمال→جمل)
+        if len(s) == 4 and s[2] == "\u0627":
+            results.append(s[:2] + s[3:])
+        # Augmentation prefix removal (ا، م، ن، ت، ي)
+        for a in cls._ISRI_AUG:
+            if s.startswith(a) and len(s) - 1 >= 3:
+                results.extend(cls._try_reduce_to_root(s[1:]))
+        # Suffix removal
+        for sf in cls._ISRI_ALL_SUFFIXES:
+            if s.endswith(sf) and len(s) - len(sf) >= 3:
+                results.extend(cls._try_reduce_to_root(s[:-len(sf)]))
+        return results
 
     @classmethod
     def _extract_arabic_root(cls, word: str) -> str | None:
         """
-        Extract a rough Arabic root by stripping common prefixes and suffixes.
+        ISRI-based Arabic stemmer: extract the 3-letter root.
 
-        This is a lightweight stemmer — not linguistically perfect, but good
-        enough to find that والدين, بولديه, and ولديك all share the root ولد.
-        Returns the stem if 3+ chars, None otherwise.
+        Uses an exhaustive approach — tries all combinations of prefix
+        stripping, suffix stripping, augmentation removal, and infixed-alef
+        removal. Collects all possible 3-letter root candidates, then
+        selects the best one (preferring roots without alef, since true
+        Arabic consonantal roots rarely contain alef).
+
+        Handles all morphological forms:
+          الوالدين، والديه، بولديه، ولديك → ولد
+          الصبر، صابرين، اصبر، فاصبر → صبر
+          احسانا، إحسان، المحسنين → حسن
         """
+        if not word or len(word) < 3:
+            return None
+
         stem = word
-        # Strip one prefix (longest match first — order matters)
-        for p in cls._ARABIC_PREFIXES:
-            if stem.startswith(p) and len(stem) > len(p) + 2:
-                stem = stem[len(p):]
-                break
-        # Strip one suffix
-        for s in cls._ARABIC_SUFFIXES:
-            if stem.endswith(s) and len(stem) > len(s) + 2:
-                stem = stem[:-len(s)]
-                break
+
+        # Normalize alef variants → plain alef
+        for ch in "\u0671\u0623\u0625\u0622":  # ٱأإآ
+            stem = stem.replace(ch, "\u0627")  # ا
+        # Alef maqsura → ya (common in roots)
+        if stem.endswith("\u0649"):  # ى
+            stem = stem[:-1] + "\u064A"  # ي
+
+        if len(stem) == 3:
+            return stem
+
+        # Build all possible prefix-stripped forms
+        prefix_stripped: list[str] = [stem]  # always try with no prefix removed
+
+        for pf in cls._ISRI_P1:
+            if stem.startswith(pf) and len(stem) - len(pf) >= 2:
+                prefix_stripped.append(stem[len(pf):])
+        for pf in cls._ISRI_P2:
+            if stem.startswith(pf) and len(stem) - len(pf) >= 2:
+                after_pf = stem[len(pf):]
+                prefix_stripped.append(after_pf)
+                # Also try single prefix + ال (e.g., و+ال+والدين)
+                if after_pf.startswith("\u0627\u0644") and len(after_pf) - 2 >= 2:
+                    prefix_stripped.append(after_pf[2:])
+
+        # For each prefix-stripped form, try recursive reduction + suffix paths
+        candidates: list[str] = []
+        for ps in prefix_stripped:
+            # Full recursive reduction (all suffix/aug/infixed-alef combos)
+            candidates.extend(cls._try_reduce_to_root(ps))
+            # Also try stripping one suffix first (allowing shorter remainders)
+            for sf in cls._ISRI_ALL_SUFFIXES:
+                if ps.endswith(sf) and len(ps) - len(sf) >= 2:
+                    candidates.extend(cls._try_reduce_to_root(ps[:-len(sf)]))
+
+        # Select best candidate: prefer 3-char roots, and among those
+        # prefer roots without alef (true Arabic roots rarely contain alef)
+        three_char = [c for c in candidates if len(c) == 3]
+        if three_char:
+            no_alef = [c for c in three_char if "\u0627" not in c]
+            if no_alef:
+                return no_alef[0]
+            return three_char[0]
+
+        valid = [c for c in candidates if len(c) >= 3]
+        if valid:
+            return min(valid, key=len)
+
         return stem if len(stem) >= 3 else None
 
     @staticmethod
@@ -672,18 +774,19 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
         """
         Generate per-word search variants for Arabic Quranic orthography.
 
-        For each word in the query:
+        For each word in the query, generates:
         1. Original word (for exact matches)
         2. Alef-normalized version (ٱأإآ → ا)
         3. Alef-stripped version (Uthmani often drops alef)
-        4. Root extraction (strip prefix+suffix to find the 3-letter core)
+        4. ISRI-stemmed root (the 3-letter core that catches all forms)
 
-        The root is the most important variant — it catches all morphological
-        forms: والدين, بولديه, ولديك, الوالدات all share root ولد.
+        The ISRI root is the most important variant — it catches all
+        morphological forms: والدين, بولديه, ولديك, الوالدات → ولد.
         """
         alef_chars = "ٱأإآ"
         plain_alef = "ا"
         stop_words = PostgresVerseEmbeddingRepository._ARABIC_STOP_WORDS
+        extract_root = PostgresVerseEmbeddingRepository._extract_arabic_root
 
         variants: set[str] = set()
 
@@ -692,35 +795,38 @@ class PostgresVerseEmbeddingRepository(IVerseEmbeddingRepository):
             if word in stop_words or len(word) < 3:
                 continue
 
-            # Original word
+            # 1. Original word
             variants.add(word)
 
-            # Normalize alef variants → plain alef
+            # 2. Alef-normalized version
             normalized = word
             for ch in alef_chars:
                 normalized = normalized.replace(ch, plain_alef)
             if normalized != word:
                 variants.add(normalized)
 
-            # Strip alef entirely (Uthmani often drops it)
+            # 3. Alef-stripped version (Uthmani script often omits alef)
             stripped = normalized.replace(plain_alef, "")
             if len(stripped) >= 3:
                 variants.add(stripped)
 
-            # Extract root by stripping prefixes + suffixes
-            # This is the KEY for Arabic morphology: والدين → ولد
-            root = PostgresVerseEmbeddingRepository._extract_arabic_root(stripped)
+            # 4. ISRI-stemmed root from the original word
+            #    This is the KEY improvement: proper Arabic stemming
+            root = extract_root(word)
             if root and root not in stop_words:
                 variants.add(root)
-
-            # Also try root extraction on the alef-normalized form
-            root_norm = PostgresVerseEmbeddingRepository._extract_arabic_root(normalized)
-            if root_norm and root_norm not in stop_words:
-                variants.add(root_norm)
-                # And strip alef from that root too
-                root_no_alef = root_norm.replace(plain_alef, "")
+                # Also add root with alef stripped (for Uthmani matching)
+                root_no_alef = root.replace(plain_alef, "")
                 if len(root_no_alef) >= 3:
                     variants.add(root_no_alef)
+
+            # Also try root from the alef-normalized form
+            root_norm = extract_root(normalized)
+            if root_norm and root_norm != root and root_norm not in stop_words:
+                variants.add(root_norm)
+                root_norm_no_alef = root_norm.replace(plain_alef, "")
+                if len(root_norm_no_alef) >= 3:
+                    variants.add(root_norm_no_alef)
 
         return [v for v in variants if len(v) >= 3 and v not in stop_words]
 

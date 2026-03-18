@@ -166,10 +166,11 @@ class Settings(BaseSettings):
         ),
     )
     reranker_model: str = Field(
-        default="jinaai/jina-reranker-v2-base-multilingual",
+        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
         description=(
-            "Cross-encoder model for re-ranking. Default model supports "
-            "100+ languages with best-in-class Arabic MIRACL score (78.69)."
+            "Cross-encoder model for re-ranking. Default is ms-marco-MiniLM-L-6-v2 "
+            "(~80MB, fast, no custom code). For better multilingual support, use "
+            "jinaai/jina-reranker-v2-base-multilingual (requires einops + trust_remote_code)."
         ),
     )
     reranker_top_k: int = Field(

@@ -51,7 +51,11 @@ class CrossEncoderRerankerService(IRerankerService):
                     "Install with: pip install sentence-transformers"
                 ) from exc
 
-            self._model = CrossEncoder(self._model_name)
+            # trust_remote_code needed for some models (e.g., jina-reranker)
+            self._model = CrossEncoder(
+                self._model_name,
+                trust_remote_code="jina" in self._model_name.lower(),
+            )
 
         return self._model
 
