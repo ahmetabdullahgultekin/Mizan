@@ -28,7 +28,7 @@ services:
       EMBEDDING_MODEL: intfloat/multilingual-e5-base
       EMBEDDING_DIMENSION: 768
       EMBEDDING_BATCH_SIZE: 32
-      ENABLE_RERANKING: ${ENABLE_RERANKING:-false}
+      ENABLE_RERANKING: ${ENABLE_RERANKING:-true}
     volumes:
       - ./data:/app/data:ro
       - mizan-hf-cache:/app/.cache/huggingface
@@ -51,7 +51,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2048M
+          memory: 3072M
 
   mizan-website:
     build:

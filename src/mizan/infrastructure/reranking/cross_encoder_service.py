@@ -106,6 +106,8 @@ class CrossEncoderRerankerService(IRerankerService):
     @property
     def is_available(self) -> bool:
         """Return True if the reranker model is loaded and usable."""
+        if self._model is None and not self._load_failed:
+            self._load_model()
         return self._model is not None and not self._load_failed
 
     async def rerank(
