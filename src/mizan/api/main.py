@@ -30,27 +30,61 @@ from mizan.infrastructure.persistence.database import close_db, init_db
 
 
 def _init_sentry() -> None:
-    """Initialise Sentry error tracking if SENTRY_DSN is configured."""
+    """Initialise Sentry error tracking if SENTRY_DSN is configured.
+
+    Integrates with FastAPI for automatic route/request context, performance
+    tracing, and structured error capture. Gracefully no-ops when the DSN is
+    empty or sentry-sdk is not installed.
+    """
     settings = get_settings()
     if not settings.sentry_dsn:
         return
     try:
         import sentry_sdk
         from sentry_sdk.integrations.asgi import SentryAsgiMiddleware  # noqa: F401 — checked below
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
         sentry_sdk.init(
             dsn=settings.sentry_dsn,
             environment=settings.sentry_environment,
-            release=__version__,
+            release=f"mizan@{__version__}",
             traces_sample_rate=settings.sentry_traces_sample_rate,
             send_default_pii=False,
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                SqlalchemyIntegration(),
+                LoggingIntegration(level=None, event_level="ERROR"),
+            ],
+            # Attach request URL and method as breadcrumb context
+            # but strip Authorization / cookie headers
+            before_send=_sentry_before_send,
         )
-        logger.info("sentry_initialised", environment=settings.sentry_environment)
+        logger.info(
+            "sentry_initialised",
+            environment=settings.sentry_environment,
+            traces_sample_rate=settings.sentry_traces_sample_rate,
+        )
     except ImportError:
         logger.warning(
             "sentry_sdk_not_installed",
-            detail="Install sentry-sdk to enable error tracking: pip install sentry-sdk",
+            detail=(
+                "Install sentry-sdk[fastapi] to enable error tracking: "
+                "pip install 'sentry-sdk[fastapi]'"
+            ),
         )
+
+
+def _sentry_before_send(event: dict, hint: dict) -> dict:  # type: ignore[type-arg]
+    """Strip sensitive headers before sending events to Sentry."""
+    request_data = event.get("request")
+    if request_data and isinstance(request_data, dict):
+        headers = request_data.get("headers")
+        if headers and isinstance(headers, dict):
+            for sensitive_key in ("authorization", "cookie", "x-api-key"):
+                headers.pop(sensitive_key, None)
+    return event
 
 
 logger = structlog.get_logger(__name__)
@@ -108,7 +142,7 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
 
     # Rate limit exceeded → 429
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # Sentry ASGI middleware — only added when sentry_sdk is installed and DSN is set
     if settings.sentry_dsn:

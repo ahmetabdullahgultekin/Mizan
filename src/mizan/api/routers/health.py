@@ -51,6 +51,26 @@ async def health_check(
             embedding_ok = False
             logger.warning("embedding_service_health_check_failed")
 
+    # Check reranking status
+    reranking_ok: bool | None = None
+    if settings.enable_reranking:
+        try:
+            from mizan.infrastructure.reranking import get_reranker_service
+            from mizan.infrastructure.reranking.cross_encoder_service import (
+                CrossEncoderRerankerService,
+            )
+
+            reranker = get_reranker_service()
+            if reranker is None:
+                reranking_ok = False
+            elif isinstance(reranker, CrossEncoderRerankerService):
+                reranking_ok = reranker.is_available
+            else:
+                reranking_ok = True  # Non-cross-encoder implementation; assume OK
+        except Exception:
+            reranking_ok = False
+            logger.warning("reranker_health_check_failed")
+
     embedding_healthy = embedding_ok is None or embedding_ok
     overall_status = (
         "healthy" if (db_healthy and cache_healthy and embedding_healthy) else "degraded"
@@ -62,6 +82,7 @@ async def health_check(
         database=db_healthy,
         cache=cache_healthy,
         embedding=embedding_ok,
+        reranking=reranking_ok,
         timestamp=datetime.utcnow(),
     )
 

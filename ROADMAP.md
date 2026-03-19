@@ -1,6 +1,6 @@
 # Mizan — Roadmap
 
-> Last updated: 2026-03-15
+> Last updated: 2026-03-19
 
 ## Current Status
 
@@ -42,7 +42,7 @@
 
 - [x] Ingest library sources: Tafsir Ibn Kathir (1,988 chunks via `scripts/ingest_tafsir.py`)
 - [x] Ingest library sources: Hadith Kutub al-Sittah (34,516 chunks via `scripts/ingest_hadith.py`)
-- [ ] Library embeddings: ~23K/36,504 embedded (63%, running autonomously via `scripts/embed_library.py`)
+- [x] Library embeddings: 36,504/36,504 embedded (100% complete)
 - [x] MASAQ morphology API: 4 endpoints (verse, word, root search, root frequency)
 - [x] MASAQ ingestion script: `scripts/ingest_masaq.py` (QAC corpus parser + fallback generation)
 
@@ -50,14 +50,13 @@
 
 - [x] CI/CD: GitHub Actions deploy workflow with SSH + retry health checks
 - [x] Bandit security scan passing (false positives suppressed with `# nosec`)
-- [ ] Sentry error tracking
-- [ ] CI/CD pipeline (GitHub Actions)
+- [x] Sentry error tracking (integration ready; set SENTRY_DSN to activate)
+- [x] CI/CD pipeline (GitHub Actions deploy workflow)
 - [x] Automated database backups (pg_dump — daily cron at 3 AM)
 
 ---
 
 ## Known Behaviors
 
-- Library text_chunks: Tafsir Ibn Kathir (1,988 chunks, fully embedded) + Kutub al-Sittah hadith (34,516 chunks, embedding in progress). Semantic search returns results from all embedded sources.
-- Embedding runs via `embed_library.py` inside the mizan-api container (~10 chunks/s on CPU, auto-recoverable with frequent commits).
+- Library text_chunks: Tafsir Ibn Kathir (1,988 chunks) + Kutub al-Sittah hadith (34,516 chunks) — all 36,504 chunks fully embedded. Semantic search returns results from all sources.
 - `lockdown-install.js SES` warning in browser console is from browser extensions (MetaMask/Brave), not Mizan code.

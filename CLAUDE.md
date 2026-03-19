@@ -10,7 +10,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 - **Islamic knowledge library** for managing and indexing Arabic text sources
 - **Interactive frontend** (Next.js) with Playground, Search, and Library pages
 
-## Current State (as of 2026-03-18)
+## Current State (as of 2026-03-19)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -20,14 +20,14 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Verse Translations | ✅ Production | 6,236 EN (Sahih International) + 6,236 TR (Elmalili Hamdi Yazir) embedded |
 | BM25 Keyword Search | ✅ Production | tsvector + GIN indexes on verses + text_chunks |
 | ISRI Arabic Stemmer | ✅ Production | Pure-Python root extraction (والدين→ولد, صابرين→صبر) |
-| Cross-Encoder Reranker | 🔧 Built, disabled | Infrastructure ready; needs multilingual model (ENABLE_RERANKING) |
+| Cross-Encoder Reranker | 🔧 Built, disabled | Infrastructure ready with OOM-safe fallback; set ENABLE_RERANKING=true to activate |
 | Cascade Embedding Service | ✅ Complete | Local provider active; Gemini cascade optional |
 | Frontend Playground | ✅ Production | Shows verse text in results, letter/word/Abjad analysis |
 | Frontend `/search` | ✅ Production | Hybrid search with EN/TR translations displayed per verse |
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
-| Morphology (MASAQ) | ❌ Not started | Future phase |
-| Library sources (Tafsir/Hadith) | 🔧 Scripts ready | Run ingest_tafsir.py / ingest_hadith.py to populate |
+| Morphology (MASAQ) | ✅ Production | 4 endpoints: verse, word, root search, root frequency |
+| Library sources (Tafsir/Hadith) | ✅ Production | 1,988 Tafsir + 34,516 Hadith chunks, all 36,504 fully embedded |
 | Website i18n (TR/AR) | ✅ Complete | Client-side: en/tr/ar + RTL + language switcher |
 
 ## Startup Sequence (Full Stack)

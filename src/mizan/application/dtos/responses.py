@@ -17,6 +17,13 @@ class HealthResponse(BaseModel):
         None,
         description="Embedding service reachable (null when semantic analysis is disabled)",
     )
+    reranking: bool | None = Field(
+        None,
+        description=(
+            "Cross-encoder reranking status: true = loaded & available, "
+            "false = enabled but failed to load, null = disabled"
+        ),
+    )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

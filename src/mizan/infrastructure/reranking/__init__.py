@@ -10,7 +10,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+import structlog
+
 from mizan.domain.services.reranking_service import IRerankerService
+
+logger = structlog.get_logger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -26,10 +30,16 @@ def get_reranker_service() -> IRerankerService | None:
 
     settings = get_settings()
     if not settings.enable_reranking:
+        logger.info("reranking_disabled", detail="ENABLE_RERANKING=false")
         return None
 
     from mizan.infrastructure.reranking.cross_encoder_service import (
         CrossEncoderRerankerService,
     )
 
+    logger.info(
+        "reranking_enabled",
+        model=settings.reranker_model,
+        top_k=settings.reranker_top_k,
+    )
     return CrossEncoderRerankerService(model_name=settings.reranker_model)

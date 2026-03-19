@@ -263,7 +263,7 @@ docker-compose up --build website
 - useEffect for side effects
 - Proper dependency arrays
 
-### Next.js 14 Features ✅
+### Next.js 16 Features ✅
 - App Router
 - Server Components (where applicable)
 - Static export optimization

@@ -6,7 +6,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-138%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-172%20passed-brightgreen.svg)](#testing)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 *Named after the Quranic concept of "Balance" (Al-Mizan - الميزان)*
@@ -43,6 +43,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis system that p
 | **Islamic Knowledge Library** | Manage and index Quran, Tafsir, Hadith sources | ✅ Complete |
 | **Semantic Search** | AI-powered meaning-based search across all indexed texts | ✅ Complete |
 | **Verse Similarity** | Find similar verses using embedding vectors | ✅ Complete |
+| **Morphological Analysis** | MASAQ corpus: word forms, root search, frequency | ✅ Complete |
 
 ### Verified Against Global Standards
 
@@ -67,7 +68,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis system that p
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mizan.git
+git clone https://github.com/ahmetabdullahgultekin/Mizan.git
 cd mizan
 
 # Create virtual environment
@@ -277,6 +278,8 @@ scripts/
 | `EMBEDDING_FALLBACK_PROVIDER` | Fallback provider (empty = disabled) | `""` |
 | `EMBEDDING_FALLBACK_MODEL` | Model name for fallback provider | `intfloat/multilingual-e5-base` |
 | `GEMINI_API_KEY` | Google Gemini API key (if using Gemini) | `""` |
+| `ENABLE_RERANKING` | Enable cross-encoder reranking | `false` |
+| `SENTRY_DSN` | Sentry error tracking DSN (empty = disabled) | `""` |
 
 ### Letter Counting Methods
 
@@ -303,7 +306,7 @@ pytest -k "abjad"          # Tests matching pattern
 
 ### Test Coverage
 
-- **138 tests** covering domain logic, value objects, and services
+- **172 tests** covering domain logic, value objects, and services
 - Property-based testing with Hypothesis for edge cases
 - Integration tests for API endpoints
 
@@ -366,8 +369,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mizan/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mizan/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ahmetabdullahgultekin/Mizan/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ahmetabdullahgultekin/Mizan/discussions)
 
 ---
 

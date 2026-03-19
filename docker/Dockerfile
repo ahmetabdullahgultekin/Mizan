@@ -12,6 +12,7 @@ COPY pyproject.toml README.md ./
 # Install CPU-only PyTorch first (saves ~1.5GB vs full CUDA), then project deps
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir sentence-transformers einops && \
+    pip install --no-cache-dir "sentry-sdk[fastapi]>=2.0.0" && \
     pip install --no-cache-dir -e .
 
 # Production stage
