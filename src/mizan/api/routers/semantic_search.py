@@ -19,6 +19,8 @@ from mizan.application.dtos.library_responses import (
     VerseEmbeddingStatsResponse,
 )
 from mizan.application.services.semantic_search_service import SemanticSearchService
+from mizan.domain.entities.library import SemanticSearchResult
+from mizan.domain.enums.library_enums import SourceType
 from mizan.infrastructure.config import get_settings
 from mizan.infrastructure.embeddings.factory import get_embedding_service
 from mizan.infrastructure.persistence.library_repositories import (
@@ -27,9 +29,6 @@ from mizan.infrastructure.persistence.library_repositories import (
     PostgresVerseTranslationRepository,
 )
 from mizan.infrastructure.reranking import get_reranker_service
-
-from mizan.domain.entities.library import SemanticSearchResult
-from mizan.domain.enums.library_enums import SourceType
 
 router = APIRouter(prefix="/search")
 logger = structlog.get_logger(__name__)
