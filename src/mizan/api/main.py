@@ -13,7 +13,7 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler as _slowapi_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -142,7 +142,11 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
 
     # Rate limit exceeded → 429
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    async def _rate_limit_handler(request: Request, exc: Exception) -> Response:
+        assert isinstance(exc, RateLimitExceeded)
+        return _slowapi_handler(request, exc)
+
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
     # Sentry ASGI middleware — only added when sentry_sdk is installed and DSN is set
     if settings.sentry_dsn:

@@ -9,6 +9,7 @@ Reciprocal Rank Fusion (RRF).
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -292,7 +293,7 @@ class SemanticSearchService:
         """
         scores: dict[str, float] = {}  # key = unique identifier
         results_map: dict[str, SemanticSearchResult] = {}
-        metadata_map: dict[str, dict] = {}  # merged metadata across paths
+        metadata_map: dict[str, dict[str, Any]] = {}  # merged metadata across paths
 
         for result_list in result_lists:
             for rank, result in enumerate(result_list):
