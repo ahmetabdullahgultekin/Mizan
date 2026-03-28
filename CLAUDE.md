@@ -10,7 +10,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 - **Islamic knowledge library** for managing and indexing Arabic text sources
 - **Interactive frontend** (Next.js) with Playground, Search, and Library pages
 
-## Current State (as of 2026-03-19)
+## Current State (as of 2026-03-28)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -128,9 +128,10 @@ src/mizan/
 
 - **API**: https://mizan-api.rollingcatsoftware.com (FastAPI, port 8000)
 - **Website**: https://mizan.rollingcatsoftware.com (Next.js standalone, port 3000)
-- **Server**: Hetzner VPS 116.203.222.213 (Docker + Traefik + auto-SSL)
+- **Server**: Hetzner CX43 (8 vCPU, 16GB RAM) 116.203.222.213 (Docker + Traefik + auto-SSL)
 - **DB**: Shared PostgreSQL 17 with pgvector on 127.0.0.1:5432
 - **Cache**: Shared Redis 7.4 on 127.0.0.1:6379 (database 1)
+- **CI/CD**: GitHub Actions on self-hosted runner `hetzner-cx43`
 - **Deploy**: `/root/projects/infra/deploy.sh [build|restart|logs] mizan`
 
 ## Active Branch
