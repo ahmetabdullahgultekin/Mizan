@@ -46,12 +46,13 @@ services:
       - "traefik.http.routers.mizan-api.rule=Host(`mizan-api.rollingcatsoftware.com`)"
       - "traefik.http.routers.mizan-api.entrypoints=websecure"
       - "traefik.http.routers.mizan-api.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.mizan-api.middlewares=secure-headers@file"
+      - "traefik.http.routers.mizan-api.middlewares=secure-headers@file,rate-limit@file"
       - "traefik.http.services.mizan-api.loadbalancer.server.port=8000"
     deploy:
       resources:
         limits:
           memory: 3072M
+          pids: 256
 
   mizan-website:
     build:
@@ -74,12 +75,13 @@ services:
       - "traefik.http.routers.mizan-web.rule=Host(`mizan.rollingcatsoftware.com`)"
       - "traefik.http.routers.mizan-web.entrypoints=websecure"
       - "traefik.http.routers.mizan-web.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.mizan-web.middlewares=secure-headers@file"
+      - "traefik.http.routers.mizan-web.middlewares=secure-headers@file,rate-limit@file"
       - "traefik.http.services.mizan-web.loadbalancer.server.port=3000"
     deploy:
       resources:
         limits:
           memory: 256M
+          pids: 256
 
 volumes:
   mizan-hf-cache:

@@ -1,14 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use standalone for Docker, export for GitHub Pages
+  // DOCKER_BUILD=true → standalone (Hetzner Docker)
+  // STATIC_HOSTING=true → export with no basePath (Hostinger)
+  // default → export with /Mizan basePath (GitHub Pages)
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : 'export',
 
-  // Base path for GitHub Pages (repo name as subdirectory)
-  // Docker: no basePath, GitHub Pages: /Mizan
-  basePath: process.env.DOCKER_BUILD === 'true' ? '' : '/Mizan',
+  basePath: process.env.DOCKER_BUILD === 'true' || process.env.STATIC_HOSTING === 'true' ? '' : '/Mizan',
 
-  // Asset prefix for GitHub Pages
-  assetPrefix: process.env.DOCKER_BUILD === 'true' ? '' : '/Mizan',
+  assetPrefix: process.env.DOCKER_BUILD === 'true' || process.env.STATIC_HOSTING === 'true' ? '' : '/Mizan',
 
   // Disable image optimization for static export
   images: {
