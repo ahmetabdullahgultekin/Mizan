@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.sql import text as sql_text
 from sqlalchemy.orm import DeclarativeBase
 
 from mizan.infrastructure.config import get_settings
@@ -106,6 +107,11 @@ async def init_db() -> None:
     """
     engine = get_engine()
     async with engine.begin() as conn:
+        # Extensions required by the schema:
+        # - pg_trgm: trigram GIN index ops (gin_trgm_ops)
+        # - vector: pgvector VECTOR type for semantic embeddings
+        await conn.execute(sql_text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        await conn.execute(sql_text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
 
 

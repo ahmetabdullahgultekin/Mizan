@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies
 COPY pyproject.toml README.md ./
 RUN pip install --no-cache-dir build && \
-    pip wheel --no-cache-dir --wheel-dir /app/wheels -e .
+    pip wheel --no-cache-dir --wheel-dir /app/wheels -e ".[ml]"
 
 # Production stage
 FROM python:3.11-slim
@@ -22,13 +22,14 @@ RUN groupadd -r mizan && useradd -r -g mizan mizan
 
 # Install runtime dependencies only
 COPY --from=builder /app/wheels /app/wheels
-RUN pip install --no-cache-dir --no-index --find-links=/app/wheels mizan && \
+RUN pip install --no-cache-dir --no-index --find-links=/app/wheels "mizan[ml]" && \
     rm -rf /app/wheels
 
 # Copy application code
 COPY src/ src/
 COPY alembic/ alembic/
 COPY alembic.ini .
+COPY scripts/ scripts/
 
 # Copy data directory (read-only at runtime)
 COPY data/ data/

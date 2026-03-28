@@ -60,10 +60,21 @@ export function parseApiError(err: unknown): ParsedApiError {
     }
     if (status === 422) {
       // Pydantic validation error — try to surface field detail
-      const detail = (err.details as { detail?: Array<{ msg: string; loc: string[] }> })?.detail;
-      if (Array.isArray(detail) && detail.length > 0) {
+      const detailCandidate = (err.details as unknown as { detail?: unknown })?.detail;
+      const detail = Array.isArray(detailCandidate)
+        ? detailCandidate.filter(
+            (item): item is { msg: string; loc: Array<string | number> } =>
+              Boolean(
+                item &&
+                  typeof item === 'object' &&
+                  typeof (item as { msg?: unknown }).msg === 'string' &&
+                  Array.isArray((item as { loc?: unknown }).loc)
+              )
+          )
+        : undefined;
+      if (detail && detail.length > 0) {
         const fieldErrors = detail
-          .map((d) => `${d.loc?.slice(1).join('.')} — ${d.msg}`)
+          .map((d) => `${d.loc.slice(1).map(String).join('.')} — ${d.msg}`)
           .join('; ');
         return {
           message: `Validation error: ${fieldErrors}`,
