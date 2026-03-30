@@ -237,3 +237,4 @@ next-env.d.ts
 # Package manager locks (use npm)
 yarn.lock
 pnpm-lock.yaml
+.env.prod
