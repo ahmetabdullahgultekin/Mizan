@@ -4,7 +4,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Moon, Sun, Github, Sparkles } from 'lucide-react';
+import { Menu, X, Moon, Sun, Sparkles } from 'lucide-react';
+import { Github } from '@/components/icons/github';
 import { useTheme } from 'next-themes';
 
 import { cn } from '@/lib/utils';

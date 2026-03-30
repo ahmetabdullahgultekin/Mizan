@@ -3,7 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Github, Twitter, Heart, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Heart, Sparkles, ExternalLink } from 'lucide-react';
+import { Github } from '@/components/icons/github';
 
 import { cn } from '@/lib/utils';
 import { navigationConfig } from '@/config/navigation';
@@ -68,8 +69,8 @@ export function Footer() {
                 rel="noopener noreferrer"
                 className="text-muted-foreground transition-colors hover:text-gold-500"
               >
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
+                <X className="h-5 w-5" />
+                <span className="sr-only">X (Twitter)</span>
               </a>
             </div>
           </motion.div>

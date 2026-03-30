@@ -1,6 +1,6 @@
 # Railway-optimized Dockerfile for Mizan API
 # Cache bust: v2
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Build arg to invalidate cache
 ARG CACHEBUST=1

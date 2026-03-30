@@ -8,10 +8,10 @@ import {
   BookOpen,
   Shield,
   Globe,
-  Github,
   ExternalLink,
   CheckCircle,
 } from 'lucide-react';
+import { Github } from '@/components/icons/github';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

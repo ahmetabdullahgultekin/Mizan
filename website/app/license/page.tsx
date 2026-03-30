@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Scale, ArrowLeft, Github } from 'lucide-react';
+import { Scale, ArrowLeft } from 'lucide-react';
+import { Github } from '@/components/icons/github';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
