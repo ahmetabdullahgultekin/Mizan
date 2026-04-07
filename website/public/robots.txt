@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mizan.app/sitemap.xml
+Sitemap: https://mizan.rollingcatsoftware.com/sitemap.xml

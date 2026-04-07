@@ -32,8 +32,8 @@ const nextConfig = {
 
   // Environment variables (public)
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://mizan-api.rollingcatsoftware.com',
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan.rollingcatsoftware.com',
   },
 
   // Headers for security
@@ -63,7 +63,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}`,
+              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || 'https://mizan-api.rollingcatsoftware.com'}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

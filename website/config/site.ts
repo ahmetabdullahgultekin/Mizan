@@ -2,7 +2,7 @@ export const siteConfig = {
   name: 'Mizan - Quranic Text Analysis',
   description:
     'High-precision Quranic text analysis engine with letter counting, word counting, and Abjad calculations. Verified against scholarly standards.',
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan.app',
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://mizan.rollingcatsoftware.com',
   ogImage: '/og-image.png',
   keywords: [
     'Quran',
@@ -23,7 +23,7 @@ export const siteConfig = {
     playground: '/playground',
   },
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://api.mizan.app',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://mizan-api.rollingcatsoftware.com',
   },
 };
 
