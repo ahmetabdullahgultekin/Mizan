@@ -85,13 +85,13 @@ function SearchResultCard({
           {result.metadata.translation_en && (
             <p dir="ltr" className="text-sm text-muted-foreground leading-relaxed">
               <span className="text-xs font-medium text-gold-500/70 mr-1.5">EN</span>
-              {String(result.metadata.translation_en)}
+              {result.metadata.translation_en}
             </p>
           )}
           {result.metadata.translation_tr && (
             <p dir="ltr" className="text-sm text-muted-foreground leading-relaxed">
               <span className="text-xs font-medium text-gold-500/70 mr-1.5">TR</span>
-              {String(result.metadata.translation_tr)}
+              {result.metadata.translation_tr}
             </p>
           )}
         </div>

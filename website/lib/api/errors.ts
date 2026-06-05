@@ -53,7 +53,7 @@ export function parseApiError(err: unknown): ParsedApiError {
     }
     if (status === 404) {
       return {
-        message: err.message || 'The requested resource was not found.',
+        message: 'The requested resource was not found.',
         isNetworkError: false,
         status,
       };
