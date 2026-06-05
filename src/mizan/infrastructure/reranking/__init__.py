@@ -24,7 +24,11 @@ def get_reranker_service() -> IRerankerService | None:
 
     Controlled by:
     - ENABLE_RERANKING (bool, default False)
-    - RERANKER_MODEL (str, default jinaai/jina-reranker-v2-base-multilingual)
+    - RERANKER_MODEL (str, default cross-encoder/ms-marco-MiniLM-L-6-v2)
+
+    The model name comes solely from ``Settings.reranker_model`` (single source
+    of truth); the constructor default matches it. See cross_encoder_service.py
+    for the rationale behind the English-default / multilingual-opt-in choice.
     """
     from mizan.infrastructure.config import get_settings
 

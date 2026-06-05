@@ -1,5 +1,13 @@
 name: Deploy to Hetzner VPS
 
+# NOTE: This workflow deploys CODE only. It does NOT run database migrations or
+# any ingest/embed script. After a deploy that adds an Alembic migration or
+# needs new/changed data, run the manual post-deploy steps documented in
+# docs/RUNBOOK.md § "0. Deployment & Post-Deploy Checklist"
+# (alembic upgrade head -> ingest -> embed -> verify). Keeping migrations manual
+# is deliberate: schema/data changes here are rare and sometimes destructive
+# (e.g. an embedding-dimension change forces a full re-embed).
+
 on:
   push:
     branches: [master]

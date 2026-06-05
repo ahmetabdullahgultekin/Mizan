@@ -20,13 +20,13 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Verse Translations | ✅ Production | 6,236 EN (Sahih International) + 6,236 TR (Elmalili Hamdi Yazir) embedded |
 | BM25 Keyword Search | ✅ Production | tsvector + GIN indexes on verses + text_chunks |
 | ISRI Arabic Stemmer | ✅ Production | Pure-Python root extraction (والدين→ولد, صابرين→صبر) |
-| Cross-Encoder Reranker | 🔧 Built, disabled | Infrastructure ready with OOM-safe fallback; set ENABLE_RERANKING=true to activate |
+| Cross-Encoder Reranker | ✅ Enabled in prod | `ENABLE_RERANKING=true` in `docker-compose.prod.yml`. Default model = `cross-encoder/ms-marco-MiniLM-L-6-v2` (English, ~80MB) — see "Reranker model choice" below. OOM-safe fallback to RRF order. |
 | Cascade Embedding Service | ✅ Complete | Local provider active; Gemini cascade optional |
 | Frontend Playground | ✅ Production | Shows verse text in results, letter/word/Abjad analysis |
 | Frontend `/search` | ✅ Production | Hybrid search with EN/TR translations displayed per verse |
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
-| Morphology (MASAQ) | ✅ Production | 4 endpoints: verse, word, root search, root frequency |
+| Morphology (MASAQ) | 🔧 Preview (data pending) | 4 endpoints live (verse, word, root search, root frequency) but `root`/`lemma`/`pattern` are null in prod — `data/masaq/` holds no QAC corpus yet. Each response carries `data_status: "preview"` + a `note` until the corpus is ingested (then it auto-flips to `"complete"`). |
 | Library sources (Tafsir/Hadith) | ✅ Production | 1,988 Tafsir + 34,516 Hadith chunks, all 36,504 fully embedded |
 | Website i18n (TR/AR) | ✅ Complete | Client-side: en/tr/ar + RTL + language switcher |
 
@@ -73,6 +73,33 @@ Controlled via environment variables:
 | `ENABLE_RERANKING` | Enable cross-encoder re-ranking | `false` |
 | `RERANKER_MODEL` | Cross-encoder model name | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | `RERANKER_TOP_K` | Candidates to re-rank | `30` |
+
+### Reranker model choice (deliberate, single source of truth)
+
+The reranker model name comes **only** from `Settings.reranker_model` (env
+`RERANKER_MODEL`); the `CrossEncoderRerankerService` constructor default mirrors
+it so the two cannot drift (they previously did: config shipped ms-marco while
+the constructor defaulted to jina).
+
+| | `cross-encoder/ms-marco-MiniLM-L-6-v2` (DEFAULT) | `jinaai/jina-reranker-v2-base-multilingual` (opt-in) |
+|---|---|---|
+| Languages | English only | 100+ incl. Arabic/Turkish (MIRACL-ar 78.69) |
+| Disk | ~80MB | ~278MB |
+| Extra deps | none | `einops` + `trust_remote_code=True` |
+| CX43 cost (8 vCPU/16GB) | small; fits alongside the ~1GB-resident e5-base embedder | larger RAM + slower first-load; still CPU-only |
+
+**Why ms-marco is the default:** the pipeline only feeds the **English
+`translation_text`** of each candidate to the reranker
+(`SemanticSearchService._rerank_results`), so an English cross-encoder is the
+correct, cheapest fit today. Switch to jina (`RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual`)
+only once the pipeline reranks Arabic/Turkish text directly. On load the service
+logs `reranker_model_loaded` with `requested_model`, `loaded_model`, and
+`matches_intent` so the running model can be confirmed against intent.
+
+> **min_similarity is a cosine-only gate.** It is enforced on each vector
+> retrieval path (where scores are true cosine similarities) and is deliberately
+> **not** re-applied to RRF-fused or sigmoid-reranked scores, which live on a
+> different scale — doing so silently dropped valid hits (fixed 2026-06-05).
 
 **Cascade mode** (Gemini first, local on failure):
 ```env

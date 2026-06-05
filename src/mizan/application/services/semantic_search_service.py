@@ -65,6 +65,7 @@ class SemanticSearchService:
         source_types: list[SourceType] | None = None,
         limit: int = 10,
         min_similarity: float = 0.5,
+        rerank: bool | None = None,
     ) -> list[SemanticSearchResult]:
         """
         Hybrid search across Islamic texts combining vector + keyword retrieval.
@@ -79,6 +80,10 @@ class SemanticSearchService:
             source_types: Filter by source types (QURAN, TAFSIR, etc.)
             limit: Maximum number of results (default 10, max 100)
             min_similarity: Minimum cosine similarity threshold (0.0-1.0)
+            rerank: Per-request reranking override. None (default) = use the
+                configured behaviour (rerank if a reranker was injected);
+                False = bypass the reranker and return raw RRF order;
+                True = rerank if a reranker is available (no-op if none).
 
         Returns:
             Ranked list of matching passages (highest fused score first)
@@ -180,15 +185,30 @@ class SemanticSearchService:
         )
 
         # --- Cross-encoder re-ranking (optional) ---
-        if self._reranker is not None and fused:
+        # `rerank` is a per-request kill-switch: None defers to the configured
+        # behaviour, False forces raw-RRF (skip the reranker even if present),
+        # True reranks when a reranker is available. This lets a single query be
+        # A/B-tested against the reranker in the field.
+        use_reranker = self._reranker is not None and rerank is not False
+        if use_reranker and fused:
             fused = await self._rerank_results(query, fused, limit)
         else:
             fused = fused[:limit]
 
-        # Apply min_similarity filter on final fused/reranked scores
-        if min_similarity > 0:
-            fused = [r for r in fused if r.similarity_score >= min_similarity]
-
+        # NOTE: we deliberately do NOT re-apply `min_similarity` here.
+        #
+        # `min_similarity` is a *cosine* threshold and is already enforced on
+        # each vector retrieval path (verse / chunk / translation `search_by_text`
+        # above), where the scores ARE genuine cosine similarities. By the time we
+        # reach this point the `similarity_score` field holds either:
+        #   * an RRF-fused score (normalised to 0-1, but NOT a cosine value — it is
+        #     a rank-reciprocal sum whose magnitude depends on the number of paths
+        #     and `k`), or
+        #   * a sigmoid-mapped cross-encoder score (also 0-1, different scale again).
+        # Filtering those fused/reranked scores against the 0.5 cosine threshold is
+        # a scale mismatch that silently drops valid hits (e.g. a strong RRF result
+        # whose normalised score happens to fall below 0.5). The cosine gate has
+        # already done its job upstream; keyword (BM25) hits intentionally bypass it.
         return fused
 
     async def _rerank_results(

@@ -6,6 +6,7 @@ Operational reference for the Mizan Core Engine (MCE). Use this document to diag
 
 ## Table of Contents
 
+0. [Deployment & Post-Deploy Checklist](#0-deployment--post-deploy-checklist)
 1. [Service Health Checks](#1-service-health-checks)
 2. [Common Failure Scenarios](#2-common-failure-scenarios)
 3. [Embedding Service Troubleshooting](#3-embedding-service-troubleshooting)
@@ -14,6 +15,72 @@ Operational reference for the Mizan Core Engine (MCE). Use this document to diag
 6. [Log Inspection](#6-log-inspection)
 7. [Backup and Restore](#7-backup-and-restore)
 8. [Incident Response Checklist](#8-incident-response-checklist)
+
+---
+
+## 0. Deployment & Post-Deploy Checklist
+
+### What the CI deploy actually does
+
+`.github/workflows/deploy-hetzner.yml` (push to `master`, paths `src/ website/
+Dockerfile* docker-compose.prod.yml requirements*.txt alembic/`) runs, over SSH
+on the Hetzner host:
+
+```bash
+cd /opt/projects/Mizan
+git pull origin master
+cd /opt/projects
+./infra/deploy.sh build mizan      # docker compose build (prod image)
+./infra/deploy.sh restart mizan    # recreate the mizan containers
+# then a /health curl with retries + a website 200 check
+```
+
+> ⚠️ **The deploy workflow does NOT run database migrations or any
+> ingest/embed script.** `alembic upgrade head` and all `scripts/ingest_*` /
+> `scripts/embed_*` runs are **manual** steps. A push that only changes code
+> deploys fine; a push that adds an Alembic migration or needs new/changed data
+> will deploy a container that is out of sync with the schema/data until you run
+> the steps below by hand.
+
+### Post-deploy order (run on the Hetzner host after a deploy)
+
+Run these from inside the running API container (it has the app + scripts +
+prod DB/Redis env). Substitute the real container name (`mizan-api`).
+
+```bash
+# 1. MIGRATE — only if this deploy added/changed an Alembic migration
+docker exec -it mizan-api alembic upgrade head
+docker exec -it mizan-api alembic current        # confirm head
+
+# 2. INGEST — only if Quran text / sources changed (normally one-time, idempotent)
+docker exec -it mizan-api python scripts/ingest_tanzil.py
+docker exec -it mizan-api python scripts/ingest_translations.py   # EN + TR
+# optional library corpora:
+# docker exec -it mizan-api python scripts/ingest_tafsir.py
+# docker exec -it mizan-api python scripts/ingest_hadith.py
+
+# 3. EMBED — only if verses/translations were (re)ingested or the model changed
+docker exec -it mizan-api python scripts/embed_quran.py --skip-existing
+
+# 4. VERIFY
+curl -s https://mizan-api.rollingcatsoftware.com/health | python -m json.tool
+curl -s https://mizan-api.rollingcatsoftware.com/api/v1/search/verses/embeddings/stats \
+  | python -m json.tool   # total_embeddings should be 6236
+```
+
+### Decision guide — what to run for a given change
+
+| Change in the deploy | Migrate | Ingest | Embed |
+|----------------------|:-------:|:------:|:-----:|
+| Code only (`src/`, `website/`) | no | no | no |
+| New Alembic migration (`alembic/`) | **yes** | only if it adds data columns to backfill | only if embeddings affected |
+| New/changed translation or corpus source | no | **yes** | **yes** (`--skip-existing`) |
+| Embedding model or dimension change | **yes** (vector column) | no | **yes** (full re-embed, NOT `--skip-existing`) |
+
+> A model/dimension change is the dangerous one: it requires an Alembic
+> migration to change the `vector(N)` column **and** a full re-embed; mixing
+> dimensions breaks pgvector search (see Section 3). Gate it behind a backup
+> (Section 7) and the eval harness before flipping prod.
 
 ---
 

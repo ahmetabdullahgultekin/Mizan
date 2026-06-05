@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Morphology preview flag** — all four `/morphology/*` endpoints now return a
+  `data_status` (`"preview"` / `"complete"`) + `preview` bool, and a `note` when
+  in preview. Until the Quranic Arabic Corpus (QAC/MASAQ) dataset is ingested,
+  `root`/`lemma`/`pattern` are null and responses self-describe as preview so
+  empty linguistic fields are not mistaken for verified output. Auto-flips to
+  `"complete"` once real root data is present (no code change needed).
+- **Per-request rerank kill-switch** — `SemanticSearchRequest` gains an optional
+  `rerank: bool | None` field. `null` (default) keeps the server's configured
+  behaviour, `false` bypasses the cross-encoder and returns raw RRF order
+  (handy for A/B-ing a query against reranking in the field), `true` forces
+  reranking when a reranker is available.
+
+### Fixed
+- **Semantic search: post-fusion `min_similarity` scale-mismatch** — the 0.5
+  cosine threshold was being re-applied to RRF-fused / sigmoid-reranked scores
+  (which are not cosine similarities), silently dropping valid hits. The cosine
+  gate is already enforced on each vector retrieval path; the redundant
+  post-fusion filter was removed. (`semantic_search_service.py`)
+
+### Changed
+- **Reranker model is now a single source of truth.** The
+  `CrossEncoderRerankerService` constructor default and the
+  `reranking/__init__.py` docstring now match `Settings.reranker_model`
+  (`cross-encoder/ms-marco-MiniLM-L-6-v2`, English) instead of falsely
+  advertising the multilingual jina model. Rationale: the pipeline only reranks
+  the English `translation_text`. Jina multilingual remains an explicit
+  `RERANKER_MODEL` opt-in. The load path now logs `requested_model` /
+  `loaded_model` / `matches_intent`. Documented the trade-off + CX43 cost in
+  CLAUDE.md.
+
+### Tests
+- Added `tests/unit/test_semantic_search_service.py` (RRF fusion + min_similarity
+  scaling regression) and `tests/unit/test_reranker_service.py` (model-choice
+  single-source-of-truth) plus the rerank kill-switch and morphology-preview-flag
+  cases. Suite is now **192 tests**.
+
 ## [0.2.0] - Unreleased
 
 ### Added
