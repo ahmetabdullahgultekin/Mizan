@@ -137,6 +137,7 @@ async def semantic_search(
         source_types=body.source_types,
         limit=body.limit,
         min_similarity=body.min_similarity,
+        rerank=body.rerank,
     )
 
     # Enrich QURAN results with English/Turkish translations

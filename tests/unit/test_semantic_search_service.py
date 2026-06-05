@@ -210,3 +210,67 @@ async def test_reranked_results_not_filtered_by_cosine_threshold():
     reranker.rerank.assert_awaited_once()
     assert {r.reference for r in results} == {"39:53", "7:156"}
     assert len(results) == 2
+
+
+# ---------------------------------------------------------------------------
+# Per-request rerank kill-switch
+# ---------------------------------------------------------------------------
+
+
+def _reranker_stub():
+    reranker = MagicMock()
+    reranker.model_name = "stub-cross-encoder"
+    reranker.rerank = AsyncMock(return_value=[(0, 0.99)])
+    return reranker
+
+
+@pytest.mark.asyncio
+async def test_rerank_false_bypasses_reranker():
+    """rerank=False must skip the reranker even when one is configured."""
+    reranker = _reranker_stub()
+    svc = _make_service(
+        verse_results=[_result("1:1", 0.9, metadata={"translation_text": "praise"})],
+        reranker=reranker,
+    )
+
+    await svc.search(query="x", source_types=[SourceType.QURAN], rerank=False)
+
+    reranker.rerank.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_rerank_none_defers_to_configured_reranker():
+    """rerank=None (default) uses the configured reranker when present."""
+    reranker = _reranker_stub()
+    svc = _make_service(
+        verse_results=[_result("1:1", 0.9, metadata={"translation_text": "praise"})],
+        reranker=reranker,
+    )
+
+    await svc.search(query="x", source_types=[SourceType.QURAN], rerank=None)
+
+    reranker.rerank.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_rerank_true_reranks_when_available():
+    """rerank=True reranks when a reranker is available."""
+    reranker = _reranker_stub()
+    svc = _make_service(
+        verse_results=[_result("1:1", 0.9, metadata={"translation_text": "praise"})],
+        reranker=reranker,
+    )
+
+    await svc.search(query="x", source_types=[SourceType.QURAN], rerank=True)
+
+    reranker.rerank.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_rerank_true_is_noop_without_reranker():
+    """rerank=True with no reranker configured is a harmless no-op (raw RRF)."""
+    svc = _make_service(verse_results=[_result("1:1", 0.9)], reranker=None)
+
+    results = await svc.search(query="x", source_types=[SourceType.QURAN], rerank=True)
+
+    assert [r.reference for r in results] == ["1:1"]

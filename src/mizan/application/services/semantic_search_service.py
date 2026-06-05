@@ -65,6 +65,7 @@ class SemanticSearchService:
         source_types: list[SourceType] | None = None,
         limit: int = 10,
         min_similarity: float = 0.5,
+        rerank: bool | None = None,
     ) -> list[SemanticSearchResult]:
         """
         Hybrid search across Islamic texts combining vector + keyword retrieval.
@@ -79,6 +80,10 @@ class SemanticSearchService:
             source_types: Filter by source types (QURAN, TAFSIR, etc.)
             limit: Maximum number of results (default 10, max 100)
             min_similarity: Minimum cosine similarity threshold (0.0-1.0)
+            rerank: Per-request reranking override. None (default) = use the
+                configured behaviour (rerank if a reranker was injected);
+                False = bypass the reranker and return raw RRF order;
+                True = rerank if a reranker is available (no-op if none).
 
         Returns:
             Ranked list of matching passages (highest fused score first)
@@ -180,7 +185,12 @@ class SemanticSearchService:
         )
 
         # --- Cross-encoder re-ranking (optional) ---
-        if self._reranker is not None and fused:
+        # `rerank` is a per-request kill-switch: None defers to the configured
+        # behaviour, False forces raw-RRF (skip the reranker even if present),
+        # True reranks when a reranker is available. This lets a single query be
+        # A/B-tested against the reranker in the field.
+        use_reranker = self._reranker is not None and rerank is not False
+        if use_reranker and fused:
             fused = await self._rerank_results(query, fused, limit)
         else:
             fused = fused[:limit]

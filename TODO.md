@@ -38,7 +38,8 @@
 
 - [ ] **Merge or close open Dependabot PR #14 (Next.js 16.2.3 → 16.2.6)** — `website/package.json`. Why: only open PR; security/bug patch backlog on the framework. Done when: PR #14 is reviewed, website build + e2e pass, and it is merged or closed with a reason. (Note: PR #13 postcss bump already merged onto HEAD.)
 
-- [ ] **Add a per-request rerank kill-switch / debug flag** — `src/mizan/application/dtos/library_requests.py` (`SemanticSearchRequest`), `src/mizan/api/routers/semantic_search.py`. Why: reranking is global-on in prod with no way to A/B a single query against raw RRF, making the P0 score-scale bug hard to diagnose in the field. Done when: an optional `rerank: bool | None` request field (or `?debug=raw`) bypasses the reranker for that call.
+- [x] **Add a per-request rerank kill-switch / debug flag** — `src/mizan/application/dtos/library_requests.py` (`SemanticSearchRequest`), `src/mizan/api/routers/semantic_search.py`. Why: reranking is global-on in prod with no way to A/B a single query against raw RRF, making the P0 score-scale bug hard to diagnose in the field. Done when: an optional `rerank: bool | None` request field (or `?debug=raw`) bypasses the reranker for that call.
+  - DONE 2026-06-05 (branch `exec/p0-2026-06-05`): added optional `rerank: bool | None` to `SemanticSearchRequest`, plumbed through `SemanticSearchService.search(rerank=...)` and the `/search/semantic` router. `null` = configured behaviour, `false` = bypass reranker (raw RRF), `true` = force rerank when available. Tests: 4 new cases in `tests/unit/test_semantic_search_service.py` (false bypasses, none/true rerank, true is a no-op without a reranker).
 
 ## P2 — Medium
 

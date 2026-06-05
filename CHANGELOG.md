@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Per-request rerank kill-switch** — `SemanticSearchRequest` gains an optional
+  `rerank: bool | None` field. `null` (default) keeps the server's configured
+  behaviour, `false` bypasses the cross-encoder and returns raw RRF order
+  (handy for A/B-ing a query against reranking in the field), `true` forces
+  reranking when a reranker is available.
+
 ### Fixed
 - **Semantic search: post-fusion `min_similarity` scale-mismatch** — the 0.5
   cosine threshold was being re-applied to RRF-fused / sigmoid-reranked scores
@@ -28,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 - Added `tests/unit/test_semantic_search_service.py` (RRF fusion + min_similarity
   scaling regression) and `tests/unit/test_reranker_service.py` (model-choice
-  single-source-of-truth). Suite is now **182 tests**.
+  single-source-of-truth) plus the rerank kill-switch cases. Suite is now
+  **186 tests**.
 
 ## [0.2.0] - Unreleased
 

@@ -45,3 +45,13 @@ class SemanticSearchRequest(BaseModel):
         le=1.0,
         description="Minimum cosine similarity threshold",
     )
+    rerank: bool | None = Field(
+        default=None,
+        description=(
+            "Per-request cross-encoder reranking override. "
+            "null (default) = use the server's configured behaviour; "
+            "false = bypass the reranker and return raw RRF order (useful for "
+            "A/B-ing a single query against reranking); "
+            "true = force reranking when a reranker is configured."
+        ),
+    )
