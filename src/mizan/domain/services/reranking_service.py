@@ -47,3 +47,16 @@ class IRerankerService(ABC):
     def model_name(self) -> str:
         """Identifier of the underlying re-ranking model."""
         ...
+
+    @property
+    def is_multilingual(self) -> bool:
+        """Whether the reranker can score non-English (e.g. Arabic/Turkish)
+        (query, document) pairs meaningfully.
+
+        Callers use this to decide whether to feed language-matched native text
+        (Arabic verse text, Turkish translation) to the reranker for non-English
+        queries. An English-only cross-encoder returns ``False`` so the search
+        service does not feed it text it cannot score. Defaults to ``False`` for
+        safety; multilingual implementations override it.
+        """
+        return False
