@@ -29,6 +29,7 @@ services:
       EMBEDDING_DIMENSION: 768
       EMBEDDING_BATCH_SIZE: 32
       ENABLE_RERANKING: ${ENABLE_RERANKING:-true}
+      RERANKER_MODEL: ${RERANKER_MODEL:-cross-encoder/ms-marco-MiniLM-L-6-v2}
     volumes:
       - ./data:/app/data:ro
       - mizan-hf-cache:/app/.cache/huggingface

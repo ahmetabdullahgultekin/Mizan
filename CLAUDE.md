@@ -110,11 +110,22 @@ fed text it cannot score (it keeps the historical English-only behaviour), so
 deploying the code change alone is a safe no-op for AR/TR until a multilingual
 model is enabled.
 
-> **Activation:** set `RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual`
-> in `.env.prod` and recreate `mizan-api` to turn on multilingual reranking.
-> Fully reversible (unset → ms-marco fallback, no redeploy). `einops` is already
-> installed, so **no image rebuild is required.** Validate before/after with the
-> eval harness (`python eval/run_eval.py`, see below).
+> **Activation:** `RERANKER_MODEL` is now wired through `docker-compose.prod.yml`
+> (defaults to ms-marco), so the model is env-selectable. Recreate `mizan-api`
+> after changing it, and **always A/B with `eval/run_eval.py` before keeping it.**
+>
+> **⚠️ 2026-06-05 LIVE A/B FINDINGS (the earlier "just set jina, no rebuild" note was WRONG):**
+> "multilingual" alone does **not** beat ms-marco on this corpus. Validated against prod:
+> | model | loads? | overall MRR | verdict |
+> |---|---|---|---|
+> | `cross-encoder/ms-marco-MiniLM-L-6-v2` (English) | ✅ | **0.478** | **best validated — current prod** |
+> | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` (multilingual, ~118MB) | ✅ | 0.333 ❌ | regresses ALL langs (ar 0.442→0.333) — weak reranker on native text loses to ms-marco on EN translations |
+> | `jinaai/jina-reranker-v2-base-multilingual` (~278MB) | ❌ | — | **fails to load**: remote code imports `create_position_ids_from_input_ids`, removed in the image's transformers → needs an **image rebuild with pinned transformers**, then re-validate |
+> | `BAAI/bge-reranker-v2-m3` (strong multilingual, ~2.3GB) | — | — | exceeds the **3GB container mem_limit** → needs a mem_limit raise + host RAM headroom, then validate |
+>
+> So the AR/TR win is real-but-gated: it needs a **strong** multilingual reranker
+> (jina via image rebuild, or bge-m3 via more RAM), each requiring infra work AND
+> an eval that actually beats 0.478 before keeping. ms-marco stays until then.
 
 On load the service logs `reranker_model_loaded` with `requested_model`,
 `loaded_model`, and `matches_intent` so the running model can be confirmed
