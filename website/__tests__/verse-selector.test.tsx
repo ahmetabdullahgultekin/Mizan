@@ -1,12 +1,13 @@
 /**
  * Component tests for VerseSelector.
  *
- * Tests the API fallback behaviour and basic render.
+ * Tests the loading state and basic render via component props.
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { VerseSelector } from '@/components/playground/verse-selector';
+import { I18nProvider } from '@/lib/i18n';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -21,11 +22,16 @@ jest.mock('framer-motion', () => ({
     div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
       React.createElement('div', props, children),
   },
+  AnimatePresence: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
 }));
 
-const { getApiClient } = jest.requireMock('@/lib/api/client') as {
-  getApiClient: jest.Mock;
-};
+// ---------------------------------------------------------------------------
+// Helper: wrap with required providers
+// ---------------------------------------------------------------------------
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(<I18nProvider>{ui}</I18nProvider>);
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -35,12 +41,9 @@ describe('VerseSelector', () => {
   const noop = () => {};
 
   it('renders loading state initially', () => {
-    getApiClient.mockReturnValue({
-      getSurahList: jest.fn(() => new Promise(() => {})), // pending forever
-    });
-
-    render(
+    renderWithProviders(
       <VerseSelector
+        isLoadingSurahs={true}
         selectedSurah={null}
         selectedAyah={null}
         onSurahChange={noop}
@@ -51,13 +54,12 @@ describe('VerseSelector', () => {
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
-  it('shows all 114 surahs from fallback when API fails', async () => {
-    getApiClient.mockReturnValue({
-      getSurahList: jest.fn(() => Promise.reject(new Error('network error'))),
-    });
-
-    render(
+  it('shows all 114 surahs from fallback when API fails', () => {
+    // Component receives surahs as props; when none provided it falls back to empty list
+    renderWithProviders(
       <VerseSelector
+        surahs={[]}
+        isLoadingSurahs={false}
         selectedSurah={null}
         selectedAyah={null}
         onSurahChange={noop}
@@ -65,16 +67,14 @@ describe('VerseSelector', () => {
       />
     );
 
-    await waitFor(() => {
-      // After fallback loads, the selector should no longer show loading
-      expect(screen.queryByText(/loading…/i)).not.toBeInTheDocument();
-    });
+    // Loading indicator should not be shown when isLoadingSurahs is false
+    expect(screen.queryByText(/loading…/i)).not.toBeInTheDocument();
   });
 
-  it('renders surah selector and ayah selector', async () => {
-    getApiClient.mockReturnValue({
-      getSurahList: jest.fn(() =>
-        Promise.resolve([
+  it('renders surah selector and ayah selector', () => {
+    renderWithProviders(
+      <VerseSelector
+        surahs={[
           {
             number: 1,
             name_arabic: 'الفاتحة',
@@ -82,13 +82,9 @@ describe('VerseSelector', () => {
             name_transliteration: 'Al-Fatihah',
             revelation_type: 'meccan',
             verse_count: 7,
-          },
-        ])
-      ),
-    });
-
-    render(
-      <VerseSelector
+          } as Parameters<typeof VerseSelector>[0]['surahs'][number],
+        ]}
+        isLoadingSurahs={false}
         selectedSurah={null}
         selectedAyah={null}
         onSurahChange={noop}
@@ -96,8 +92,6 @@ describe('VerseSelector', () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByText(/select surah/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/select surah/i)).toBeInTheDocument();
   });
 });

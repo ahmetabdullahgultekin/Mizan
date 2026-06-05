@@ -224,7 +224,11 @@ export interface SemanticSearchResultResponse {
   reference: string;
   content: string;
   similarity_score: number;
-  metadata: Record<string, unknown>;
+  metadata: {
+    translation_en?: string;
+    translation_tr?: string;
+    [key: string]: unknown;
+  };
 }
 
 /** The full response wrapper from POST /api/v1/search/semantic. */
