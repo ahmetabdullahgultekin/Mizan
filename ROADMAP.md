@@ -78,6 +78,32 @@ Deliverables:
 
 ---
 
+## Code Quality & Professionalization
+
+> From the 2026-06-05 code-quality review (`docs/CODE_QUALITY_2026-06-05.md`, grade **A−**).
+> Two small fixes (Abjad `max_length`, a bad `type: ignore` cast) already shipped on
+> `quality/2026-06-05`. The items below are behavior-changing or cross-cutting and are
+> intentionally **not** auto-applied:
+
+- **[P1] Make the test suite hermetic + the rate limiter effective** *(biggest refactor)*.
+  Integration tests can't run without a live DB — `main.py:104` calls `init_db()` in the
+  lifespan whenever `is_production` is False, bypassing the conftest dependency mocks
+  (22 integration tests ERROR locally/CI). Gate `init_db()` behind an explicit flag or make
+  the test `app` fixture force `is_production=True`. Separately, the slowapi rate limiter is
+  installed but only **one** route is decorated — add `Limiter(default_limits=[...])` or
+  decorate the analysis + library routers (each then needs `request: Request`).
+- **[P2] De-duplicate `SemanticSearchService.search()` retrieval paths** — extract a
+  `_safe_retrieve(path_name, coro)` helper; the six try/except blocks differ only by the
+  `path=` log label (~50 lines removed).
+- **[P2] Replace deprecated naive `datetime.utcnow()`** (~9 sites) with
+  `datetime.now(timezone.utc)`; currently hidden because `filterwarnings` ignores
+  `DeprecationWarning`. Touches stored-timestamp tz semantics — do deliberately.
+- **[P3] Tighten integration asserts** that accept `status_code in (200, 500)` once the
+  suite is hermetic; collapse the duplicated `get_async_session`/`get_session_context`;
+  swap `asyncio.get_event_loop()` → `get_running_loop()` in the two ML adapters.
+
+---
+
 ## Notes & gotchas
 
 - AsyncSession runs all search DB queries **sequentially** (no concurrent queries on one session) — keep this in mind for latency work.
