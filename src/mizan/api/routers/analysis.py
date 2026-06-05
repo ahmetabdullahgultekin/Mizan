@@ -118,7 +118,7 @@ async def count_words(
 @router.get("/analysis/abjad", response_model=AbjadResponse)
 async def calculate_abjad(
     analyzer: Analyzer,
-    text: str | None = Query(None, description="Text to calculate"),
+    text: str | None = Query(None, max_length=10000, description="Text to calculate"),
     surah: int | None = Query(None, ge=1, le=114),
     verse: int | None = Query(None, ge=1),
     system: str = Query("mashriqi", pattern="^(mashriqi|maghribi)$"),

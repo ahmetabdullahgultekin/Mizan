@@ -6,10 +6,14 @@ Manage Islamic Knowledge Library spaces and text sources.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+
+if TYPE_CHECKING:
+    from mizan.domain.entities.library import TextSource
 
 from mizan.api.dependencies import DbSession, verify_api_key
 from mizan.application.dtos.library_requests import (
@@ -146,10 +150,7 @@ async def delete_library_space(
 # ---------------------------------------------------------------------------
 
 
-def _source_to_response(source: object) -> TextSourceResponse:
-    from mizan.domain.entities.library import TextSource
-
-    s: TextSource = source  # type: ignore[assignment]
+def _source_to_response(s: TextSource) -> TextSourceResponse:
     return TextSourceResponse(
         id=s.id,
         library_space_id=s.library_space_id,
