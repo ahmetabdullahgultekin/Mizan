@@ -101,7 +101,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     _init_sentry()
     # In non-production environments, ensure tables exist for local development.
-    if not settings.is_production:
+    # Gated behind `init_db_on_startup` so the test suite (and any hermetic run)
+    # can disable the live-DB connection at startup. Production never reaches
+    # this branch and uses Alembic migrations instead of metadata.create_all.
+    if not settings.is_production and settings.init_db_on_startup:
         await init_db()
 
     # Initialize cache

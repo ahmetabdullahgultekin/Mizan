@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mizan.api.dependencies import get_db_session, get_redis_cache
 from mizan.api.main import create_app
 from mizan.infrastructure.cache.redis_cache import RedisCache
+from mizan.infrastructure.config import get_settings
 
 # ---------------------------------------------------------------------------
 # Mock session factory
@@ -55,7 +56,16 @@ async def _mock_cache_dep() -> RedisCache:
 
 @pytest.fixture(scope="session")
 def app():
-    """FastAPI app with dependency overrides for testing."""
+    """FastAPI app with dependency overrides for testing.
+
+    The lifespan's ``init_db()`` call is disabled (``init_db_on_startup=False``)
+    so the suite is **hermetic** — no live Postgres is required. Without this the
+    TestClient context manager would run the lifespan, hit a non-existent test
+    DB, and ERROR every integration test (the historical 22-error failure mode).
+    DB and cache are served by the in-memory dependency overrides below.
+    """
+    settings = get_settings()
+    settings.init_db_on_startup = False
     application = create_app()
     application.dependency_overrides[get_db_session] = _mock_session_dep
     application.dependency_overrides[get_redis_cache] = _mock_cache_dep
