@@ -227,6 +227,76 @@ async def test_arabic_query_multilingual_reranker_reranks_native_hits() -> None:
 
 
 @pytest.mark.asyncio
+async def test_english_only_reranker_skips_arabic_query_by_default() -> None:
+    """Measured safety guard: an English-only reranker hurts Arabic queries, so
+    by default (rerank=None) a non-English query with a non-multilingual reranker
+    must NOT be reranked — the reranker is never even called."""
+    verse_hits = [_res("2:153", content="بالصبر"), _res("2:61", content="نصبر")]
+
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(return_value=[])
+    reranker.is_multilingual = False
+    reranker.model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    svc = _make_service_with_reranker(reranker, verse_results=verse_hits)
+    await svc.search(query="صبر", source_types=[SourceType.QURAN], limit=10)
+
+    reranker.rerank.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_english_only_reranker_still_reranks_english_query() -> None:
+    """The guard is language-scoped: English queries still get reranked by the
+    English-only reranker (where it measurably helps)."""
+    hits = [
+        _res("1:1", content="x", translation_text="bismillah", translation_language="en"),
+        _res("1:2", content="y", translation_text="praise", translation_language="en"),
+    ]
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(return_value=[(0, 0.9), (1, 0.1)])
+    reranker.is_multilingual = False
+    reranker.model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    svc = _make_service_with_reranker(reranker, verse_results=hits)
+    await svc.search(query="mercy", source_types=[SourceType.QURAN], limit=10)
+
+    reranker.rerank.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_explicit_rerank_true_overrides_monolingual_guard() -> None:
+    """`rerank=True` is an explicit opt-in that overrides the safety guard, so a
+    caller can still force the English reranker on an Arabic query for A/B."""
+    hits = [
+        _res("2:153", content="z", translation_text="seek help in patience", translation_language="en"),
+    ]
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(return_value=[(0, 0.7)])
+    reranker.is_multilingual = False
+    reranker.model_name = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    svc = _make_service_with_reranker(reranker, verse_results=hits)
+    await svc.search(query="صبر", source_types=[SourceType.QURAN], limit=10, rerank=True)
+
+    reranker.rerank.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_multilingual_reranker_not_skipped_for_arabic() -> None:
+    """A multilingual reranker must NOT be skipped for Arabic — it should rerank."""
+    hits = [_res("2:153", content="بالصبر"), _res("2:61", content="نصبر")]
+    reranker = MagicMock()
+    reranker.rerank = AsyncMock(return_value=[(0, 0.9), (1, 0.1)])
+    reranker.is_multilingual = True
+    reranker.model_name = "jinaai/jina-reranker-v2-base-multilingual"
+
+    svc = _make_service_with_reranker(reranker, verse_results=hits)
+    await svc.search(query="صبر", source_types=[SourceType.QURAN], limit=10)
+
+    reranker.rerank.assert_awaited()
+
+
+@pytest.mark.asyncio
 async def test_reranked_scores_map_to_correct_candidate() -> None:
     """Regression: ``rerank()`` returns (doc_index, score) sorted by score; the
     service must map each score back to the candidate via the RETURNED doc index,

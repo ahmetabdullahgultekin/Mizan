@@ -217,6 +217,29 @@ class SemanticSearchService:
         # True reranks when a reranker is available. This lets a single query be
         # A/B-tested against the reranker in the field.
         use_reranker = self._reranker is not None and rerank is not False
+
+        # Safety guard (measured): an ENGLISH-ONLY reranker on a non-English
+        # query is net-NEGATIVE. A live A/B on the eval harness showed Arabic
+        # P@10 drop from 0.356 (raw RRF) to 0.197 with the English ms-marco
+        # reranker on, because it can only score the few candidates that carry
+        # an English translation and promotes them over better native Arabic
+        # vector hits. So unless the caller *explicitly* asked to rerank
+        # (`rerank is True`), we skip reranking non-English queries when the
+        # configured reranker is not multilingual, and return raw RRF. Enable a
+        # multilingual reranker (RERANKER_MODEL=jina...) to rerank AR/TR natively.
+        if (
+            use_reranker
+            and rerank is not True
+            and detect_query_language(query) != "en"
+            and not self._reranker.is_multilingual  # type: ignore[union-attr]
+        ):
+            use_reranker = False
+            logger.debug(
+                "rerank_skipped_monolingual_model",
+                query=query[:80],
+                model=self._reranker.model_name,  # type: ignore[union-attr]
+            )
+
         if use_reranker and fused:
             fused = await self._rerank_results(query, fused, limit)
         else:
