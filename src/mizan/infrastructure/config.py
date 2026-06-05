@@ -109,6 +109,17 @@ class Settings(BaseSettings):
         default=False,
         description="Enable Tier 5 structural tools",
     )
+    init_db_on_startup: bool = Field(
+        default=True,
+        description=(
+            "When True (default), the app lifespan calls init_db() in "
+            "non-production environments to create tables for local dev. "
+            "Set False to make the lifespan hermetic (no DB connection at "
+            "startup) — the test suite forces this so integration tests run "
+            "without a live Postgres, and production uses Alembic migrations "
+            "instead of metadata.create_all regardless of this flag."
+        ),
+    )
 
     # ==========================================================================
     # Embedding Configuration (Tier 4 - Semantic Search)

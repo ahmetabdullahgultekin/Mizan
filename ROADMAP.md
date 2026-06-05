@@ -85,13 +85,13 @@ Deliverables:
 > `quality/2026-06-05`. The items below are behavior-changing or cross-cutting and are
 > intentionally **not** auto-applied:
 
-- **[P1] Make the test suite hermetic + the rate limiter effective** *(biggest refactor)*.
-  Integration tests can't run without a live DB — `main.py:104` calls `init_db()` in the
-  lifespan whenever `is_production` is False, bypassing the conftest dependency mocks
-  (22 integration tests ERROR locally/CI). Gate `init_db()` behind an explicit flag or make
-  the test `app` fixture force `is_production=True`. Separately, the slowapi rate limiter is
-  installed but only **one** route is decorated — add `Limiter(default_limits=[...])` or
-  decorate the analysis + library routers (each then needs `request: Request`).
+- ✅ **[P1] Make the test suite hermetic + the rate limiter effective** *(done 2026-06-05,
+  `feat/search-quality-baseline-2026-06-05`)*. Added `Settings.init_db_on_startup`
+  (default `True`; test conftest forces `False`) — eliminates the 22-ERROR mode when no
+  local Postgres is present. Added `Limiter(default_limits=["120/minute"])` so
+  `SlowAPIMiddleware` enforces a ceiling on every route, not just the one decorated
+  `/search/semantic` route. 3 new rate-limit integration tests; full suite now 225 tests
+  (all green).
 - **[P2] De-duplicate `SemanticSearchService.search()` retrieval paths** — extract a
   `_safe_retrieve(path_name, coro)` helper; the six try/except blocks differ only by the
   `path=` log label (~50 lines removed).

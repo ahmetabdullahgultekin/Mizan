@@ -73,7 +73,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   text-routing matrix per query-language × reranker capability, a multilingual
   end-to-end rerank of native Arabic hits, and a regression for the reranked-score
   index-mapping bug) plus `is_multilingual` cases in `test_reranker_service.py`.
-  Unit + domain suite is now **195 tests** (all green; ruff + mypy --strict clean).
+- **Eval set expanded to 24 labelled cases** (8 EN / 8 TR / 8 AR, cross-lingual
+  triples: mercy, patience, charity, forgiveness, prayer, oneness-of-God, light,
+  supplication). Added `eval/baseline_2026-06-05.md` with measured production
+  numbers (P@10, R@10, MRR by language) and the A/B rerank-on vs rerank-off
+  comparison that surfaces the Arabic zero-benefit gap.
+- **Hermetic integration test suite** — `settings.init_db_on_startup` flag (new
+  `Settings` field, default `True`) lets the test conftest disable the lifespan
+  `init_db()` call without patching `is_production`. Eliminates the historical
+  22-ERROR mode when no local Postgres is present.
+- **Rate-limiter default_limits** — `Limiter(default_limits=["120/minute"])` now
+  installed as a catch-all so `SlowAPIMiddleware` enforces a ceiling on every
+  route, not just the one decorated `/search/semantic` route. Added
+  `tests/integration/test_rate_limiting.py` (3 tests: default limit reaches
+  undecorated routes, 429 body names the limit, regression guard that
+  `default_limits` is never accidentally removed).
+  Full suite is now **225 tests** (all green; ruff + mypy --strict clean).
 
 ## [0.2.0] - Unreleased
 
