@@ -6,7 +6,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-186%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-192%20passed-brightgreen.svg)](#testing)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 *Named after the Quranic concept of "Balance" (Al-Mizan - الميزان)*
@@ -306,7 +306,7 @@ pytest -k "abjad"          # Tests matching pattern
 
 ### Test Coverage
 
-- **186 tests** covering domain logic, value objects, and services
+- **192 tests** covering domain logic, value objects, and services
 - Property-based testing with Hypothesis for edge cases
 - Integration tests for API endpoints
 - Integration tests need a Postgres test DB (CI provides a `mizan_test` service

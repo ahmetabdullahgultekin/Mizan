@@ -26,7 +26,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 | Frontend `/search` | ✅ Production | Hybrid search with EN/TR translations displayed per verse |
 | Frontend `/library` | ✅ Complete | Create spaces, add sources, trigger indexing |
 | Favicon + PWA manifest | ✅ Done | favicon.ico, apple-touch-icon, site.webmanifest |
-| Morphology (MASAQ) | ✅ Production | 4 endpoints: verse, word, root search, root frequency |
+| Morphology (MASAQ) | 🔧 Preview (data pending) | 4 endpoints live (verse, word, root search, root frequency) but `root`/`lemma`/`pattern` are null in prod — `data/masaq/` holds no QAC corpus yet. Each response carries `data_status: "preview"` + a `note` until the corpus is ingested (then it auto-flips to `"complete"`). |
 | Library sources (Tafsir/Hadith) | ✅ Production | 1,988 Tafsir + 34,516 Hadith chunks, all 36,504 fully embedded |
 | Website i18n (TR/AR) | ✅ Complete | Client-side: en/tr/ar + RTL + language switcher |
 

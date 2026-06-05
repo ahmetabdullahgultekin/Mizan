@@ -8,6 +8,24 @@ from mizan.api.dependencies import MorphologyRepo
 
 router = APIRouter()
 
+# Morphology is structurally live, but the linguistic fields (root / lemma /
+# pattern) are only populated once the Quranic Arabic Corpus (QAC/MASAQ) dataset
+# is ingested into `data/masaq/` (see scripts/ingest_masaq.py). Until then those
+# fields come back null. We surface a `data_status` flag on every response so
+# clients never mistake an empty `root` for a verified "this word has no root".
+_PREVIEW_NOTE = (
+    "Linguistic fields (root/lemma/pattern) require the Quranic Arabic Corpus "
+    "dataset, which is not yet loaded. Segmentation/POS may be present but "
+    "roots/lemmas will be null. This is preview output, not verified morphology."
+)
+
+
+def _data_status(has_linguistic_data: bool) -> dict[str, Any]:
+    """Build the data-availability envelope shared by all morphology responses."""
+    if has_linguistic_data:
+        return {"data_status": "complete", "preview": False}
+    return {"data_status": "preview", "preview": True, "note": _PREVIEW_NOTE}
+
 
 @router.get("/morphology/verse/{surah}/{verse}")
 async def get_verse_morphology(
@@ -26,10 +44,15 @@ async def get_verse_morphology(
     location = VerseLocation(surah, verse)
     words = await morphology_repo.get_verse_morphology(location)
 
+    has_roots = any(
+        seg.root or seg.lemma for segments in words for seg in segments
+    )
+
     return {
         "surah": surah,
         "verse": verse,
         "word_count": len(words),
+        **_data_status(has_roots),
         "words": [
             {
                 "word_number": word_idx + 1,
@@ -84,11 +107,14 @@ async def get_word_morphology(
             detail=f"No morphology data found for word {word} at {surah}:{verse}",
         )
 
+    has_roots = any(seg.root or seg.lemma for seg in segments)
+
     return {
         "surah": surah,
         "verse": verse,
         "word_number": word,
         "segment_count": len(segments),
+        **_data_status(has_roots),
         "segments": [
             {
                 "morpheme_type": seg.morpheme_type,
@@ -132,6 +158,7 @@ async def search_by_root(
         "root": root,
         "total_occurrences": len(results),
         "returned": len(limited),
+        **_data_status(bool(results)),
         "occurrences": [
             {
                 "surah": loc.surah_number,
@@ -162,6 +189,7 @@ async def get_root_frequency(
     return {
         "total_unique_roots": len(freq),
         "returned": len(top_roots),
+        **_data_status(bool(freq)),
         "roots": [
             {
                 "root": root,

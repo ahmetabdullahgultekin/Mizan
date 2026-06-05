@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Morphology preview flag** — all four `/morphology/*` endpoints now return a
+  `data_status` (`"preview"` / `"complete"`) + `preview` bool, and a `note` when
+  in preview. Until the Quranic Arabic Corpus (QAC/MASAQ) dataset is ingested,
+  `root`/`lemma`/`pattern` are null and responses self-describe as preview so
+  empty linguistic fields are not mistaken for verified output. Auto-flips to
+  `"complete"` once real root data is present (no code change needed).
 - **Per-request rerank kill-switch** — `SemanticSearchRequest` gains an optional
   `rerank: bool | None` field. `null` (default) keeps the server's configured
   behaviour, `false` bypasses the cross-encoder and returns raw RRF order
@@ -35,8 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 - Added `tests/unit/test_semantic_search_service.py` (RRF fusion + min_similarity
   scaling regression) and `tests/unit/test_reranker_service.py` (model-choice
-  single-source-of-truth) plus the rerank kill-switch cases. Suite is now
-  **186 tests**.
+  single-source-of-truth) plus the rerank kill-switch and morphology-preview-flag
+  cases. Suite is now **192 tests**.
 
 ## [0.2.0] - Unreleased
 
