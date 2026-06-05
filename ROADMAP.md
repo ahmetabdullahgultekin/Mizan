@@ -30,8 +30,8 @@ Known stale claims corrected this refresh: reranking is **enabled** (not disable
 
 ## Next up (highest leverage)
 
-1. Make reranking actually help: pick one reranker model deliberately (multilingual vs English-only) and fix the post-rerank `min_similarity` filter that compares cosine thresholds against non-cosine scores (silently drops valid hits). — *TODO P0*
-2. Re-verify the test suite green on HEAD and record the real number behind the "172 passed" badge. — *TODO P0*
+1. ✅ **DONE** — Reranking made correct: single-source reranker model, post-rerank `min_similarity` scale bug fixed (PR #15, live), per-request rerank kill-switch, eval harness, and **language-aware reranking** so AR/TR queries get a real rerank signal (branch `feat/search-quality-2026-06-05`). A latent reranked-score→candidate index-mapping bug was also fixed. *(was TODO P0)*
+2. **Activate the multilingual reranker in prod** — set `RERANKER_MODEL=jina…` (no rebuild; reversible) once RAM headroom is confirmed; verify AR/TR gains with `eval/run_eval.py`. — *TODO P2 (operator / sign-off)*
 3. Turn on observability and document the real deploy/migrate/ingest order. — *TODO P1*
 
 ---
@@ -41,10 +41,12 @@ Known stale claims corrected this refresh: reranking is **enabled** (not disable
 **Goal:** the search results users see are provably better with reranking on than off, and no valid result is silently dropped.
 
 Deliverables:
-- Single source of truth for the reranker model; `/health` (or startup log) confirms the loaded model.
-- `min_similarity` filtering applied on a meaningful (cosine) scale, or removed for fused results.
-- Per-request rerank kill-switch / `debug=raw` to A/B a query against raw RRF.
-- Search-quality eval harness (labelled query→verse set, recall@k / nDCG) gating any ranking change.
+- ✅ Single source of truth for the reranker model; startup log (`reranker_model_loaded`) confirms the loaded model. *(PR #15)*
+- ✅ `min_similarity` filtering applied on a meaningful (cosine) scale (removed for fused results; cosine gate stays on the per-path vector scores). *(PR #15 — live; "mercy" went from ~2 to 20 results)*
+- ✅ Per-request rerank kill-switch (`rerank: bool|null`) to A/B a query against raw RRF. *(PR #15)*
+- ✅ Search-quality eval harness (`eval/`, labelled EN/TR/AR query set, precision@k / recall@k / MRR by language) to gate any ranking change. *(branch `feat/search-quality-2026-06-05`)*
+- ✅ Language-aware reranking: native AR/TR candidate text is fed to a multilingual reranker so Arabic/Turkish queries get a real rerank signal (was English-only → AR/TR pinned at RRF floor); English-only reranker is never fed text it cannot score. Latent reranked-score→candidate index-mapping bug fixed. *(branch `feat/search-quality-2026-06-05`)*
+- ⏳ **Activate** the multilingual reranker in prod (`RERANKER_MODEL=jina…`, no rebuild — `einops` already in image, reversible) once RAM headroom is confirmed and the eval harness shows AR/TR gains. *(operator / sign-off — TODO P2)*
 
 ## Phase 2 — Production hardening & observability
 
