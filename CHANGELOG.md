@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Language-aware reranking (Arabic/Turkish search quality).** The reranker
+  previously only re-scored candidates carrying an English `translation_text`,
+  feeding that English text to an English-only cross-encoder — so raw Arabic
+  verse-vector and keyword hits were never reranked and stayed pinned at the RRF
+  floor (the measured root cause of poor AR/TR ranking). Now
+  `detect_query_language()` + `SemanticSearchService._rerank_text_for()` route
+  candidate text by query script **and** reranker capability: a multilingual
+  reranker (`IRerankerService.is_multilingual` → True for jina / `*multilingual*`
+  / `bge-*-m3`) receives native, language-matched text (Arabic `content` for AR
+  queries, Turkish translation for TR), while an English-only reranker keeps its
+  historical English-only behaviour and is never fed text it cannot score. The
+  code change is therefore a safe no-op on AR/TR until a multilingual model is
+  enabled (`RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual`; `einops`
+  is already in the image so no rebuild; reversible by unsetting the env var).
+- **Search-quality eval harness (`eval/`).** `eval/queries.json` (labelled
+  EN/TR/AR query cases, cross-lingual triples) + `eval/run_eval.py` (stdlib-only)
+  report **precision@k / recall@k / MRR** by language against a running API, with
+  `--rerank true|false|default` (A/B vs raw RRF), `--base-url`, and a `--min-mrr`
+  CI gate. Production baseline (ms-marco): overall P@10=0.288 / MRR=0.524, with
+  Arabic the weakest at P@10=0.197 / R@10=0.119.
 - **Morphology preview flag** — all four `/morphology/*` endpoints now return a
   `data_status` (`"preview"` / `"complete"`) + `preview` bool, and a `note` when
   in preview. Until the Quranic Arabic Corpus (QAC/MASAQ) dataset is ingested,
@@ -21,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reranking when a reranker is available.
 
 ### Fixed
+- **Reranked scores were attached to the wrong candidates (latent bug).**
+  `rerank()` returns `(document_index, score)` tuples sorted by score, but the
+  merge in `_rerank_results` mapped each score back using the *enumerate
+  position* instead of the returned `document_index` — so once the reranker
+  re-sorted its output, scores landed on the wrong verses. Now mapped via the
+  returned `document_index`. (`semantic_search_service.py`)
 - **Semantic search: post-fusion `min_similarity` scale-mismatch** — the 0.5
   cosine threshold was being re-applied to RRF-fused / sigmoid-reranked scores
   (which are not cosine similarities), silently dropping valid hits. The cosine
@@ -42,7 +68,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `tests/unit/test_semantic_search_service.py` (RRF fusion + min_similarity
   scaling regression) and `tests/unit/test_reranker_service.py` (model-choice
   single-source-of-truth) plus the rerank kill-switch and morphology-preview-flag
-  cases. Suite is now **192 tests**.
+  cases.
+- Added `tests/unit/test_language_aware_rerank.py` (query-language detection, the
+  text-routing matrix per query-language × reranker capability, a multilingual
+  end-to-end rerank of native Arabic hits, and a regression for the reranked-score
+  index-mapping bug) plus `is_multilingual` cases in `test_reranker_service.py`.
+  Unit + domain suite is now **195 tests** (all green; ruff + mypy --strict clean).
 
 ## [0.2.0] - Unreleased
 

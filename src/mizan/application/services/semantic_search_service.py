@@ -9,6 +9,7 @@ Reciprocal Rank Fusion (RRF).
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
@@ -28,6 +29,32 @@ from mizan.domain.services.reranking_service import IRerankerService
 QUERY_PREFIX = "query: "
 
 logger = structlog.get_logger(__name__)
+
+# Unicode ranges for script detection (query-language routing for reranking).
+_ARABIC_RE = re.compile(r"[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]")
+# Turkish-specific letters that distinguish TR from generic Latin/EN text.
+_TURKISH_RE = re.compile(r"[çğıöşüÇĞİÖŞÜ]")
+
+
+def detect_query_language(query: str) -> str:
+    """Best-effort detection of the dominant script/language of a query.
+
+    Returns one of ``"ar"``, ``"tr"``, or ``"en"``. This drives which candidate
+    text is fed to the cross-encoder reranker so the (query, document) pair is
+    in the *same* language — an English-only reranker scoring an English
+    translation against an Arabic query is a cross-lingual mismatch that
+    produces no useful signal (the root cause of poor Arabic/Turkish search).
+
+    Heuristics (cheap, no model):
+    * any Arabic-script character  -> "ar"
+    * any Turkish-specific letter  -> "tr"
+    * otherwise                    -> "en"
+    """
+    if _ARABIC_RE.search(query):
+        return "ar"
+    if _TURKISH_RE.search(query):
+        return "tr"
+    return "en"
 
 
 class SemanticSearchService:
@@ -190,10 +217,35 @@ class SemanticSearchService:
         # True reranks when a reranker is available. This lets a single query be
         # A/B-tested against the reranker in the field.
         use_reranker = self._reranker is not None and rerank is not False
+
+        # Safety guard (measured): an ENGLISH-ONLY reranker on a non-English
+        # query is net-NEGATIVE. A live A/B on the eval harness showed Arabic
+        # P@10 drop from 0.356 (raw RRF) to 0.197 with the English ms-marco
+        # reranker on, because it can only score the few candidates that carry
+        # an English translation and promotes them over better native Arabic
+        # vector hits. So unless the caller *explicitly* asked to rerank
+        # (`rerank is True`), we skip reranking non-English queries when the
+        # configured reranker is not multilingual, and return raw RRF. Enable a
+        # multilingual reranker (RERANKER_MODEL=jina...) to rerank AR/TR natively.
+        if (
+            use_reranker
+            and rerank is not True
+            and detect_query_language(query) != "en"
+            and not self._reranker.is_multilingual  # type: ignore[union-attr]
+        ):
+            use_reranker = False
+            logger.debug(
+                "rerank_skipped_monolingual_model",
+                query=query[:80],
+                model=self._reranker.model_name,  # type: ignore[union-attr]
+            )
+
         if use_reranker and fused:
             fused = await self._rerank_results(query, fused, limit)
         else:
             fused = fused[:limit]
+
+        # `fused` is already trimmed to `limit` by either branch above.
 
         # NOTE: we deliberately do NOT re-apply `min_similarity` here.
         #
@@ -211,6 +263,59 @@ class SemanticSearchService:
         # already done its job upstream; keyword (BM25) hits intentionally bypass it.
         return fused
 
+    @staticmethod
+    def _rerank_text_for(
+        result: SemanticSearchResult,
+        query_lang: str,
+        multilingual: bool,
+    ) -> str:
+        """Pick the candidate text to feed the reranker, matched to the query
+        language so the (query, document) pair is monolingual.
+
+        With a **multilingual** reranker:
+        * ``ar`` query -> Arabic ``content`` (the original verse / chunk text,
+          which is ALWAYS present), falling back to any translation.
+        * ``tr`` query -> the Turkish translation if the candidate carries one,
+          else the Arabic content (a same-script anchor beats English), else any
+          translation.
+        * ``en`` query -> the English ``translation_text``, falling back to
+          content.
+
+        With an **English-only** reranker we must NOT feed it Arabic/Turkish text
+        it cannot score, so for ``ar``/``tr`` queries we keep the historical
+        behaviour: rerank only candidates that carry an English ``translation_text``
+        (empty string => caller keeps the RRF score for that candidate). For an
+        ``en`` query, English translation then content.
+
+        Returning a non-empty string for a candidate means "rerank me"; returning
+        ``""`` means "keep my RRF score". The old code only ever reranked
+        candidates that carried ``translation_text``; with a multilingual model
+        we now rerank Arabic verse-vector and keyword hits too, fixing their RRF
+        floor pinning.
+        """
+        meta = result.metadata
+        translation = meta.get("translation_text") or ""
+        trans_lang = (meta.get("translation_language") or "").lower()
+        content = result.content or ""
+
+        if query_lang == "en":
+            return translation or content
+
+        # Non-English query.
+        if not multilingual:
+            # English-only reranker: only the English translation is scorable.
+            if trans_lang.startswith("en") or (translation and not trans_lang):
+                return translation
+            return ""
+
+        # Multilingual reranker: feed native, language-matched text.
+        if query_lang == "ar":
+            return content or translation
+        # query_lang == "tr"
+        if translation and trans_lang.startswith("tr"):
+            return translation
+        return content or translation
+
     async def _rerank_results(
         self,
         query: str,
@@ -220,15 +325,21 @@ class SemanticSearchService:
         """
         Re-rank top candidates using the cross-encoder for precise scoring.
 
-        Takes the top reranker_top_k candidates from the fused list,
-        scores each (query, document) pair with the cross-encoder, and
-        returns the top `limit` results with updated similarity scores.
+        Takes the top reranker_top_k candidates from the fused list, picks a
+        language-matched document text for each (see ``_rerank_text_for``),
+        scores each (query, document) pair with the cross-encoder, and returns
+        the top `limit` results with updated similarity scores.
+
+        Language-matched candidate selection means Arabic and Turkish queries
+        now get a real rerank signal across all candidates (when paired with a
+        multilingual reranker), instead of only the subset that carried an
+        English translation.
         """
         assert self._reranker is not None  # noqa: S101
 
-        # Split candidates: those with translations can be reranked,
-        # those without keep their RRF score. This prevents an English-only
-        # reranker from destroying good Arabic keyword matches.
+        query_lang = detect_query_language(query)
+        multilingual = self._reranker.is_multilingual
+
         to_rerank = candidates[: self._reranker_top_k]
 
         rerank_indices: list[int] = []
@@ -236,14 +347,21 @@ class SemanticSearchService:
         keep_as_is: list[tuple[int, SemanticSearchResult]] = []
 
         for i, r in enumerate(to_rerank):
-            translation = r.metadata.get("translation_text", "")
-            if translation:
+            doc_text = self._rerank_text_for(r, query_lang, multilingual)
+            if doc_text:
                 rerank_indices.append(i)
-                rerank_contents.append(translation)
+                rerank_contents.append(doc_text)
             else:
                 keep_as_is.append((i, r))
 
-        # Rerank only the translatable candidates
+        # Rerank every candidate that yielded language-matched text.
+        #
+        # `rerank()` returns (document_index, score) tuples *sorted by score*,
+        # where document_index points into `rerank_contents`. We must map that
+        # document_index back to the candidate position via `rerank_indices` —
+        # NOT the enumerate position, which no longer lines up once the list is
+        # sorted by score. (Using the enumerate position was a latent bug that
+        # assigned reranked scores to the wrong candidates.)
         reranked_scores: dict[int, float] = {}
         if rerank_contents:
             reranked = await self._reranker.rerank(
@@ -251,13 +369,14 @@ class SemanticSearchService:
                 documents=rerank_contents,
                 top_k=len(rerank_contents),
             )
-            for rank_idx, (_, score) in enumerate(reranked):
-                orig_idx = rerank_indices[rank_idx]
+            for doc_idx, score in reranked:
+                orig_idx = rerank_indices[doc_idx]
                 reranked_scores[orig_idx] = score
 
         logger.debug(
             "reranking_complete",
             query=query[:80],
+            query_lang=query_lang,
             candidates=len(to_rerank),
             reranked=len(reranked_scores),
             kept=len(keep_as_is),

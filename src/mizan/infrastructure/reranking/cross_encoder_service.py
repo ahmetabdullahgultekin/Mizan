@@ -215,3 +215,20 @@ class CrossEncoderRerankerService(IRerankerService):
     @property
     def model_name(self) -> str:
         return self._model_name
+
+    # Substrings that mark a cross-encoder model as multilingual (able to score
+    # Arabic/Turkish query-document pairs). Conservative allow-list: anything not
+    # matched is treated as English-only so we never feed a monolingual model
+    # text it cannot score.
+    _MULTILINGUAL_MARKERS = ("jina", "multilingual", "bge-m3", "bge-reranker-v2-m3", "mmarco")
+
+    @property
+    def is_multilingual(self) -> bool:
+        """True when the configured model can score non-English pairs.
+
+        Derived from the model name (single source of truth = the configured
+        ``RERANKER_MODEL``). ``ms-marco-MiniLM-L-6-v2`` -> False (English only);
+        ``jinaai/jina-reranker-v2-base-multilingual`` -> True.
+        """
+        name = self._model_name.lower()
+        return any(marker in name for marker in self._MULTILINGUAL_MARKERS)

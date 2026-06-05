@@ -81,20 +81,58 @@ The reranker model name comes **only** from `Settings.reranker_model` (env
 it so the two cannot drift (they previously did: config shipped ms-marco while
 the constructor defaulted to jina).
 
-| | `cross-encoder/ms-marco-MiniLM-L-6-v2` (DEFAULT) | `jinaai/jina-reranker-v2-base-multilingual` (opt-in) |
+| | `cross-encoder/ms-marco-MiniLM-L-6-v2` (DEFAULT) | `jinaai/jina-reranker-v2-base-multilingual` (opt-in, recommended for AR/TR) |
 |---|---|---|
 | Languages | English only | 100+ incl. Arabic/Turkish (MIRACL-ar 78.69) |
 | Disk | ~80MB | ~278MB |
-| Extra deps | none | `einops` + `trust_remote_code=True` |
-| CX43 cost (8 vCPU/16GB) | small; fits alongside the ~1GB-resident e5-base embedder | larger RAM + slower first-load; still CPU-only |
+| Extra deps | none | `trust_remote_code=True` (`einops` is **already** in the prod image — `docker/Dockerfile` line 14) |
+| CX43 cost (8 vCPU/16GB) | small; fits alongside the ~1GB-resident e5-base embedder | +~0.5–1GB resident + slower first-load; still CPU-only |
 
-**Why ms-marco is the default:** the pipeline only feeds the **English
-`translation_text`** of each candidate to the reranker
-(`SemanticSearchService._rerank_results`), so an English cross-encoder is the
-correct, cheapest fit today. Switch to jina (`RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual`)
-only once the pipeline reranks Arabic/Turkish text directly. On load the service
-logs `reranker_model_loaded` with `requested_model`, `loaded_model`, and
-`matches_intent` so the running model can be confirmed against intent.
+#### Language-aware reranking (2026-06-05)
+
+The pipeline now routes the **candidate text it feeds the reranker by the
+detected query language _and_ the reranker's capability**
+(`SemanticSearchService._rerank_text_for` + `detect_query_language`):
+
+| Query language | English-only reranker (ms-marco) | Multilingual reranker (`is_multilingual=True`, e.g. jina) |
+|---|---|---|
+| English (or plain Latin) | English `translation_text` → `content` | English `translation_text` → `content` |
+| Turkish (`çğıöşü…`) | English translation only (native TR not fed) | Turkish translation → Arabic `content` |
+| Arabic (Arabic script) | English translation only (native AR not fed) | **Arabic `content`** (the original verse/chunk text) |
+
+**Why this matters:** previously the reranker only ever re-scored candidates
+that carried an English `translation_text`, so raw Arabic verse-vector and
+keyword hits (no translation on that path) were **never reranked** and stayed
+pinned at the RRF floor — the root cause of poor Arabic/Turkish ranking. Now, an
+Arabic/Turkish query paired with a multilingual reranker gets native,
+language-matched text for **every** candidate. An English-only reranker is never
+fed text it cannot score (it keeps the historical English-only behaviour), so
+deploying the code change alone is a safe no-op for AR/TR until a multilingual
+model is enabled.
+
+> **Activation:** set `RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual`
+> in `.env.prod` and recreate `mizan-api` to turn on multilingual reranking.
+> Fully reversible (unset → ms-marco fallback, no redeploy). `einops` is already
+> installed, so **no image rebuild is required.** Validate before/after with the
+> eval harness (`python eval/run_eval.py`, see below).
+
+On load the service logs `reranker_model_loaded` with `requested_model`,
+`loaded_model`, and `matches_intent` so the running model can be confirmed
+against intent. `CrossEncoderRerankerService.is_multilingual` is derived from the
+model name (single source of truth): jina / `*multilingual*` / `bge-*-m3` → True.
+
+#### Search-quality eval harness (`eval/`)
+
+`eval/run_eval.py` runs a labelled query set (`eval/queries.json`, EN/TR/AR
+triples) against a running API and reports **precision@k, recall@k, and MRR** by
+language. Use it to prove a ranking change helps before flipping it in prod:
+
+```bash
+python eval/run_eval.py                       # against prod
+python eval/run_eval.py --base-url http://localhost:8000
+python eval/run_eval.py --rerank false        # raw RRF baseline (A/B)
+python eval/run_eval.py --json --min-mrr 0.4  # CI gate (non-zero exit if below)
+```
 
 > **min_similarity is a cosine-only gate.** It is enforced on each vector
 > retrieval path (where scores are true cosine similarities) and is deliberately

@@ -47,6 +47,25 @@ def test_service_constructor_default_matches_config():
     assert svc.model_name == Settings().reranker_model
 
 
+def test_default_ms_marco_is_not_multilingual():
+    """The English ms-marco default must report as English-only so the search
+    service never feeds it Arabic/Turkish text it cannot score."""
+    assert CrossEncoderRerankerService().is_multilingual is False
+
+
+def test_jina_model_is_multilingual():
+    """The jina opt-in reports multilingual so the search service routes native
+    Arabic/Turkish candidate text to it."""
+    jina = "jinaai/jina-reranker-v2-base-multilingual"
+    assert CrossEncoderRerankerService(model_name=jina).is_multilingual is True
+
+
+def test_bge_m3_reranker_is_multilingual():
+    """Other multilingual rerankers are recognised by name marker."""
+    bge = "BAAI/bge-reranker-v2-m3"
+    assert CrossEncoderRerankerService(model_name=bge).is_multilingual is True
+
+
 # ---------------------------------------------------------------------------
 # The intended model is the one that loads
 # ---------------------------------------------------------------------------
