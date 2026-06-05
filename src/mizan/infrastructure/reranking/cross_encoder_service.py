@@ -1,11 +1,27 @@
 """
 Cross-encoder re-ranking service using sentence-transformers.
 
-Uses jinaai/jina-reranker-v2-base-multilingual by default — a fast
-multilingual cross-encoder with strong Arabic support (MIRACL 78.69),
-running entirely offline without any API keys.
+Default model: cross-encoder/ms-marco-MiniLM-L-6-v2 (English, ~80MB).
 
-Model download (~278MB) happens automatically on first use.
+DELIBERATE MODEL CHOICE (single source of truth = ``Settings.reranker_model``):
+The search pipeline only ever feeds the *English translation* of each candidate
+to the reranker (see ``SemanticSearchService._rerank_results``: it reranks
+``metadata["translation_text"]``, which is English). For that English-only
+workload an English cross-encoder is the correct, cheapest fit, so the production
+default is ``ms-marco-MiniLM-L-6-v2``:
+
+    * ~80MB on disk, fast on CPU, no ``trust_remote_code``, no ``einops`` dep
+    * Fits comfortably alongside the ~1GB-resident e5-base embedder on the CX43
+      (8 vCPU / 16GB) without OOM risk.
+
+A multilingual reranker (``jinaai/jina-reranker-v2-base-multilingual``, ~278MB,
+MIRACL-ar 78.69, needs ``einops`` + ``trust_remote_code``) only adds value once
+the pipeline reranks Arabic/Turkish text directly. It remains an explicit opt-in
+via ``RERANKER_MODEL`` rather than a silent default. Earlier docstrings here and
+in ``reranking/__init__.py`` claimed jina was the default while the config
+shipped ms-marco — that mismatch is now resolved in favour of the config value.
+
+Model weights download automatically on first use.
 """
 
 from __future__ import annotations
@@ -32,17 +48,21 @@ class CrossEncoderRerankerService(IRerankerService):
     Gracefully handles OOM and model-loading failures by falling back
     to the original ordering (no reranking) rather than crashing.
 
-    Recommended model: jinaai/jina-reranker-v2-base-multilingual
-    - Best Arabic MIRACL score (78.69) among fast models
-    - Supports 100+ languages including Arabic (Classical + Modern)
-    - ~278MB disk space
-    - Runs on CPU in <100ms for 30 candidates
-    - No API key required
+    Default model: cross-encoder/ms-marco-MiniLM-L-6-v2
+    - English cross-encoder; matches the English-translation rerank workload
+    - ~80MB disk space, no trust_remote_code / einops required
+    - Runs on CPU in <100ms for 30 candidates, no API key required
+
+    Multilingual opt-in: set RERANKER_MODEL=jinaai/jina-reranker-v2-base-multilingual
+    (~278MB, MIRACL-ar 78.69) when reranking Arabic/Turkish text directly.
+
+    The constructor default mirrors ``Settings.reranker_model`` so that
+    constructing the service without arguments cannot diverge from config.
     """
 
     def __init__(
         self,
-        model_name: str = "jinaai/jina-reranker-v2-base-multilingual",
+        model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
     ) -> None:
         self._model_name = model_name
         self._model: Any = None
@@ -74,9 +94,17 @@ class CrossEncoderRerankerService(IRerankerService):
                     self._model_name,
                     trust_remote_code="jina" in self._model_name.lower(),
                 )
+                # Surface the model that ACTUALLY loaded so ops can confirm the
+                # running model matches the configured intent (closes the
+                # "prod silently runs a different reranker than advertised" gap).
+                loaded_name = self._resolve_loaded_model_name()
                 logger.info(
                     "reranker_model_loaded",
-                    model=self._model_name,
+                    requested_model=self._model_name,
+                    loaded_model=loaded_name,
+                    matches_intent=(
+                        loaded_name is None or loaded_name == self._model_name
+                    ),
                 )
             except MemoryError:
                 logger.warning(
@@ -97,6 +125,25 @@ class CrossEncoderRerankerService(IRerankerService):
                 return None
 
         return self._model
+
+    def _resolve_loaded_model_name(self) -> str | None:
+        """Best-effort read of the model name the loaded CrossEncoder reports.
+
+        sentence-transformers exposes the source model id under different
+        attributes across versions; probe the known ones. Returns None if the
+        model is not loaded or the name cannot be determined (in which case the
+        caller treats it as "cannot disprove intent").
+        """
+        model = self._model
+        if model is None:
+            return None
+        for attr in ("model_card_data", "config"):
+            obj = getattr(model, attr, None)
+            for name_attr in ("base_model", "_name_or_path", "name_or_path"):
+                value = getattr(obj, name_attr, None)
+                if isinstance(value, str) and value:
+                    return value
+        return None
 
     @staticmethod
     def _sigmoid(x: float) -> float:

@@ -185,10 +185,20 @@ class SemanticSearchService:
         else:
             fused = fused[:limit]
 
-        # Apply min_similarity filter on final fused/reranked scores
-        if min_similarity > 0:
-            fused = [r for r in fused if r.similarity_score >= min_similarity]
-
+        # NOTE: we deliberately do NOT re-apply `min_similarity` here.
+        #
+        # `min_similarity` is a *cosine* threshold and is already enforced on
+        # each vector retrieval path (verse / chunk / translation `search_by_text`
+        # above), where the scores ARE genuine cosine similarities. By the time we
+        # reach this point the `similarity_score` field holds either:
+        #   * an RRF-fused score (normalised to 0-1, but NOT a cosine value — it is
+        #     a rank-reciprocal sum whose magnitude depends on the number of paths
+        #     and `k`), or
+        #   * a sigmoid-mapped cross-encoder score (also 0-1, different scale again).
+        # Filtering those fused/reranked scores against the 0.5 cosine threshold is
+        # a scale mismatch that silently drops valid hits (e.g. a strong RRF result
+        # whose normalised score happens to fall below 0.5). The cosine gate has
+        # already done its job upstream; keyword (BM25) hits intentionally bypass it.
         return fused
 
     async def _rerank_results(
