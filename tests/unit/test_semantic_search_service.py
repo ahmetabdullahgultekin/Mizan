@@ -57,6 +57,10 @@ def _make_service(
     """Wire a SemanticSearchService with fully-mocked dependencies."""
     embedder = MagicMock()
     embedder.embed_text = AsyncMock(return_value=[0.1] * 768)
+    # Mirror the e5 backend: the search service asks the embedder for its query
+    # prefix (a string), so the mock must return one, not a bare MagicMock.
+    embedder.query_prefix = MagicMock(return_value="query: ")
+    embedder.passage_prefix = MagicMock(return_value="passage: ")
 
     verse_repo = MagicMock()
     verse_repo.search_by_text = AsyncMock(return_value=verse_results or [])

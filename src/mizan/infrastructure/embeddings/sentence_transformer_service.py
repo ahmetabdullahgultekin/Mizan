@@ -15,6 +15,10 @@ from functools import lru_cache
 from typing import Any
 
 from mizan.domain.services.embedding_service import IEmbeddingService
+from mizan.infrastructure.embeddings.prefix_policy import (
+    EmbeddingPrefixPolicy,
+    prefix_policy_for,
+)
 
 
 class SentenceTransformerEmbeddingService(IEmbeddingService):
@@ -36,6 +40,9 @@ class SentenceTransformerEmbeddingService(IEmbeddingService):
         self._model_name = model_name
         self._model: Any = None
         self._dimension: int | None = None
+        # Prefix convention is a property of the chosen model (e.g. the e5
+        # family needs 'query: ' / 'passage: ', other models need none).
+        self._prefix_policy: EmbeddingPrefixPolicy = prefix_policy_for(model_name)
 
     def _load_model(self) -> Any:
         """Load the sentence-transformer model (blocking, cached)."""
@@ -91,6 +98,14 @@ class SentenceTransformerEmbeddingService(IEmbeddingService):
             # Load model to get dimension
             self._load_model()
         return self._dimension or 768
+
+    def query_prefix(self) -> str:
+        """Query prefix this model expects (e.g. 'query: ' for e5)."""
+        return self._prefix_policy.query_prefix
+
+    def passage_prefix(self) -> str:
+        """Passage prefix this model expects (e.g. 'passage: ' for e5)."""
+        return self._prefix_policy.passage_prefix
 
 
 @lru_cache(maxsize=1)

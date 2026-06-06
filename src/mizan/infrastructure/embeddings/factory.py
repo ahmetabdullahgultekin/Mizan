@@ -96,6 +96,8 @@ def get_embedding_status() -> dict[str, object]:
             "fallback": svc.fallback_model,
             "currently_using_fallback": svc.is_using_fallback,
             "dimension": svc.embedding_dimension,
+            "query_prefix": svc.query_prefix(),
+            "passage_prefix": svc.passage_prefix(),
         }
 
     return {
@@ -103,4 +105,6 @@ def get_embedding_status() -> dict[str, object]:
         "provider": settings.embedding_provider,
         "model": svc.model_name,
         "dimension": svc.embedding_dimension,
+        "query_prefix": svc.query_prefix(),
+        "passage_prefix": svc.passage_prefix(),
     }

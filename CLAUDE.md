@@ -10,7 +10,7 @@ Mizan Core Engine (MCE) is a scholarly-grade Quranic text analysis platform that
 - **Islamic knowledge library** for managing and indexing Arabic text sources
 - **Interactive frontend** (Next.js) with Playground, Search, and Library pages
 
-## Current State (as of 2026-03-28)
+## Current State (as of 2026-06-06)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -59,6 +59,28 @@ uvicorn mizan.api.main:app --reload --host 0.0.0.0 --port 8000
 cd website && npm run dev
 ```
 
+## Build / Test / Lint
+
+Backend tests run with the `[dev]` extra only — **`torch` / `sentence-transformers`
+(the `[ml]` extra) are deliberately NOT installed** for tests. The embedding and
+reranking services use lazy imports, and the prefix policy is derived from the
+model *name*, so the whole suite (incl. backend-selection tests) runs with no
+model download. Only `eval/run_offline_ab.py` needs the `ml` extra.
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"          # NO ml extra — keeps the shared host light
+
+pytest                            # 250 passing (225 unit + integration + property)
+                                  # conftest forces init_db_on_startup=False → no Postgres needed
+ruff check src/ tests/            # lint (CI scope)
+mypy src/mizan --ignore-missing-imports   # CI uses this; `mypy --strict src/` also clean
+```
+
+- CI (`.github/workflows/ci.yml`): ruff + mypy + pytest with `--cov-fail-under=50`
+  on Python 3.11 & 3.12, plus a `bandit -r src/ -ll` security job.
+- CI/CD deploy is **manual** (self-hosted runner) — merging does NOT auto-deploy.
+
 ## Embedding Configuration
 
 Controlled via environment variables:
@@ -66,13 +88,69 @@ Controlled via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `EMBEDDING_PROVIDER` | Primary provider: `local` or `gemini` | `local` |
-| `EMBEDDING_MODEL` | Primary model name | `intfloat/multilingual-e5-base` |
+| `EMBEDDING_MODEL` | Primary model name (see "Pluggable embedding backend" below) | `intfloat/multilingual-e5-base` |
+| `EMBEDDING_DIMENSION` | Vector dimension — MUST match the model's output | `768` |
 | `EMBEDDING_FALLBACK_PROVIDER` | Fallback provider (empty = disabled) | `""` |
 | `EMBEDDING_FALLBACK_MODEL` | Fallback model name | `intfloat/multilingual-e5-base` |
 | `GEMINI_API_KEY` | Required if using Gemini | `""` |
 | `ENABLE_RERANKING` | Enable cross-encoder re-ranking | `false` |
 | `RERANKER_MODEL` | Cross-encoder model name | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | `RERANKER_TOP_K` | Candidates to re-rank | `30` |
+
+### Pluggable embedding backend + model-aware prefix policy (2026-06-06)
+
+The embedding model is selected by `EMBEDDING_MODEL` (already plumbed
+config → `factory.py` → `SentenceTransformerEmbeddingService`). The **query/passage
+prefix convention is now a property of the chosen backend**, not a hardcoded
+application constant:
+
+- `src/mizan/infrastructure/embeddings/prefix_policy.py` resolves a model name to
+  its prefix policy. **e5 family** (`intfloat/multilingual-e5-*`, `e5-*`) →
+  `query: ` / `passage: ` (required for good e5 recall). **Everything else**
+  (gemini, `bge-m3`, `gte-*`, unknown) → no prefix (conservative default —
+  never inject a prefix the model was not trained on).
+- `IEmbeddingService.query_prefix()` / `.passage_prefix()` expose it; the search
+  service (`semantic_search_service.py`) and indexing service
+  (`indexing_service.py`) ask the backend for its prefix instead of using a
+  module constant. The module-level `QUERY_PREFIX`/`PASSAGE_PREFIX` constants now
+  derive from `E5_POLICY` (single source of truth).
+- **Default behavior is unchanged**: the prod default is e5-base, so the live
+  prefixes stay `query: ` / `passage: ` exactly as before. Selecting a different
+  model automatically carries the right convention. `/health` embedding status
+  now reports `query_prefix` / `passage_prefix`.
+
+> **Swapping to `intfloat/multilingual-e5-large` is NOT a drop-in env flip.**
+> e5-large is **1024-dim** (e5-base is 768-dim). A cutover requires
+> `EMBEDDING_MODEL=intfloat/multilingual-e5-large` **+** `EMBEDDING_DIMENSION=1024`
+> **+** a `vector(768)→vector(1024)` Alembic migration **+** a full re-embed of all
+> verses/translations/library chunks. Keep the default until that migration ships
+> under owner sign-off. The prefix policy already handles e5-large correctly.
+
+#### Offline embedding A/B (search-quality frontier)
+
+`eval/run_offline_ab.py` compares embedding models **in-process, offline, and
+prod-data-safe** (builds a throwaway index from the local Tanzil Arabic text +
+the labelled Arabic eval cases; never reads/writes prod vectors). It reports
+MRR / nDCG@k / recall@k / precision@k per model and has a **disk guard** that
+refuses to download if it would exceed `--max-disk-pct` (default 85%).
+
+```bash
+pip install -e ".[ml]"   # needs torch + sentence-transformers (heavy)
+python eval/run_offline_ab.py \
+    --models intfloat/multilingual-e5-base intfloat/multilingual-e5-large
+python eval/run_offline_ab.py --dry-run   # plan + disk check, no download
+```
+
+> **2026-06-06 measured A/B (Arabic path, k=10, 248-verse pool):**
+> | model | MRR | nDCG@10 | recall@10 | P@10 |
+> |---|---|---|---|---|
+> | `multilingual-e5-base` (current prod) | 0.585 | 0.289 | 0.247 | 0.163 |
+> | `multilingual-e5-large` | **0.854** | **0.452** | **0.390** | **0.250** |
+>
+> e5-large is a **large Arabic-recall win** (+0.269 MRR, +0.163 nDCG). It is the
+> recommended next embedding upgrade, **gated** behind the 768→1024 migration +
+> full re-embed + owner sign-off. Default stays e5-base. Full report:
+> `docs/EMBEDDING_AB_2026-06-06.md`.
 
 ### Reranker model choice (deliberate, single source of truth)
 
@@ -172,7 +250,7 @@ src/mizan/
 ├── application/      # Use cases
 │   └── services/     # library_service, indexing_service, semantic_search_service
 ├── infrastructure/
-│   ├── embeddings/   # sentence_transformer_service, gemini_embedding_service, cascade_service, factory
+│   ├── embeddings/   # sentence_transformer_service, gemini_embedding_service, cascade_service, factory, prefix_policy
 │   ├── reranking/    # cross_encoder_service, factory (optional cross-encoder re-ranking)
 │   ├── persistence/  # SQLAlchemy models + repositories (incl. verse_translations)
 │   └── config.py     # Settings (pydantic-settings)
@@ -186,6 +264,9 @@ src/mizan/
 |------|---------|
 | `src/mizan/infrastructure/config.py` | All settings including embedding config |
 | `src/mizan/infrastructure/embeddings/factory.py` | Embedding service creation + cascade logic |
+| `src/mizan/infrastructure/embeddings/prefix_policy.py` | Model-aware query/passage prefix policy (e5 → `query: `/`passage: `; else none) |
+| `eval/run_offline_ab.py` | Offline, prod-safe embedding-model A/B (MRR/nDCG/recall@k) with disk guard |
+| `eval/run_eval.py` | Live end-to-end search-quality eval (HTTP against running API) |
 | `src/mizan/api/main.py` | FastAPI app — routers registered here |
 | `src/mizan/infrastructure/persistence/models.py` | All SQLAlchemy models |
 | `alembic/versions/` | Database migrations — apply with `alembic upgrade head` |

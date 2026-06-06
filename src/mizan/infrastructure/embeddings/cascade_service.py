@@ -56,6 +56,19 @@ class CascadeEmbeddingService(IEmbeddingService):
             return f"{self._fallback.model_name} [fallback]"
         return self._primary.model_name
 
+    def query_prefix(self) -> str:
+        """Delegate to the primary's prefix convention.
+
+        The vector index is written by whichever provider is healthy; the
+        primary is the steady-state provider, so its prefix convention is the
+        one search queries must match for cosine similarity to be meaningful.
+        """
+        return self._primary.query_prefix()
+
+    def passage_prefix(self) -> str:
+        """Delegate to the primary's passage prefix convention (see query_prefix)."""
+        return self._primary.passage_prefix()
+
     async def embed_text(self, text: str) -> list[float]:
         results = await self.embed_batch([text])
         return results[0]

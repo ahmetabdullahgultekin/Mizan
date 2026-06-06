@@ -58,3 +58,20 @@ class IEmbeddingService(ABC):
     def embedding_dimension(self) -> int:
         """Dimensionality of the embedding vectors produced."""
         ...
+
+    def query_prefix(self) -> str:
+        """Instruction prefix this model expects on search queries.
+
+        Default is empty (no prefix). Backends whose model requires an
+        asymmetric retrieval prefix (e.g. the e5 family's ``"query: "``)
+        override this so the prefix convention travels with the backend
+        instead of being hardcoded by callers.
+        """
+        return ""
+
+    def passage_prefix(self) -> str:
+        """Instruction prefix this model expects on indexed passages.
+
+        Default is empty (no prefix). See :meth:`query_prefix`.
+        """
+        return ""
