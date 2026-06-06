@@ -132,7 +132,12 @@ class Settings(BaseSettings):
         default="intfloat/multilingual-e5-base",
         description=(
             "Model identifier. For local: HuggingFace model name. "
-            "For gemini: 'gemini-embedding-2-preview' or 'text-embedding-004'"
+            "For gemini: 'gemini-embedding-2-preview' or 'text-embedding-004'. "
+            "Selectable local backends include 'intfloat/multilingual-e5-large' "
+            "(1024-dim — requires embedding_dimension=1024 + a full re-embed) and "
+            "'intfloat/multilingual-e5-base' (768-dim, default). The query/passage "
+            "prefix convention is derived from this name automatically (e5 family "
+            "→ 'query: '/'passage: '; other models → none)."
         ),
     )
     embedding_dimension: int = Field(

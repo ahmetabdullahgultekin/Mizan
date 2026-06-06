@@ -154,6 +154,9 @@ def test_turkish_query_multilingual_falls_back_to_content() -> None:
 def _make_service_with_reranker(reranker, **kwargs) -> SemanticSearchService:
     embedder = MagicMock()
     embedder.embed_text = AsyncMock(return_value=[0.1] * 768)
+    # Mirror the e5 backend: the service asks the embedder for its query prefix.
+    embedder.query_prefix = MagicMock(return_value="query: ")
+    embedder.passage_prefix = MagicMock(return_value="passage: ")
 
     verse_repo = MagicMock()
     verse_repo.search_by_text = AsyncMock(return_value=kwargs.get("verse_results", []))

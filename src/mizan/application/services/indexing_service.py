@@ -1,11 +1,14 @@
 """
 Indexing Service - chunks text sources and generates embeddings.
 
-For the multilingual-e5 family of models, the recommended prefix pattern is:
-- Passages (documents): 'passage: <text>'
-- Queries (search input): 'query: <text>'
+The passage prefix is a property of the embedding *backend*, not hardcoded here:
+the indexing path asks the embedding service for ``passage_prefix()`` so the
+convention swaps correctly when ``EMBEDDING_MODEL`` changes. For the
+multilingual-e5 family (the prod default) that prefix is ``'passage: '`` (and
+queries use ``'query: '``), which improves Arabic/multilingual retrieval; other
+models (gemini, bge-m3, …) return an empty prefix.
 
-This improves retrieval quality significantly for Arabic and multilingual text.
+The module-level ``PASSAGE_PREFIX`` constant remains as the documented e5 value.
 """
 
 from __future__ import annotations
@@ -29,11 +32,14 @@ from mizan.infrastructure.chunking.chunking_strategies import (
     RawChunk,
     SlidingWindowChunker,
 )
+from mizan.infrastructure.embeddings.prefix_policy import E5_POLICY
 
 logger = structlog.get_logger(__name__)
 
-# Prefix for e5-style models (improves retrieval quality)
-PASSAGE_PREFIX = "passage: "
+# Documented e5 passage prefix. The live prefix is resolved per-backend via
+# ``embedding_service.passage_prefix()``; this constant is the e5 value (single
+# source of truth = ``E5_POLICY``).
+PASSAGE_PREFIX = E5_POLICY.passage_prefix
 
 
 class IndexingService:
@@ -121,9 +127,10 @@ class IndexingService:
 
             # 3. Generate and store embeddings in batches
             indexed = 0
+            passage_prefix = self._embedder.passage_prefix()
             for i in range(0, len(domain_chunks), self._batch_size):
                 batch = domain_chunks[i : i + self._batch_size]
-                texts = [PASSAGE_PREFIX + c.content for c in batch]
+                texts = [passage_prefix + c.content for c in batch]
                 embeddings = await self._embedder.embed_batch(texts)
 
                 updates = [(chunk.id, emb) for chunk, emb in zip(batch, embeddings, strict=True)]
@@ -232,9 +239,10 @@ class QuranEmbeddingIndexer:
         logger.info("embedding_verses_start", verse_count=len(verses))
 
         embedded = 0
+        passage_prefix = self._embedder.passage_prefix()
         for i in range(0, len(verses), self._batch_size):
             batch = verses[i : i + self._batch_size]
-            texts = [PASSAGE_PREFIX + v.text_uthmani for v in batch]
+            texts = [passage_prefix + v.text_uthmani for v in batch]
             embeddings = await self._embedder.embed_batch(texts)
 
             verse_embeddings = [

@@ -1,6 +1,6 @@
 # Mizan — Roadmap
 
-> Last refreshed: 2026-06-04 (grounded in HEAD `3c44ddb` + live API/container inspection)
+> Last refreshed: 2026-06-06 (post-merge; embedding-backend abstraction + offline A/B shipped)
 > Strategic direction. Tactical, executable items live in `TODO.md`.
 
 Mizan Core Engine is a scholarly-grade Quranic text-analysis + semantic-search platform:
@@ -15,7 +15,7 @@ semantic search across Quran, translations, tafsir, and hadith.
 
 ## Current state (verified)
 
-**Live & healthy.** Both containers up; `/health` → `database:true, cache:true, embedding:true, reranking:true`. Deployed image (2026-04-26) matches current HEAD; local repo is in sync with `origin/master`.
+**Live & healthy.** Both containers up; `/health` → `database:true, cache:true, embedding:true, reranking:true`. NOTE: prod runs the deployed image (2026-04-26) — search-quality + reranker correctness work and the embedding-backend abstraction merged to `master` after that, so **prod lags `master`** until the next manual deploy. The reranker fixes (PR #15) note themselves as live; the embedding-backend abstraction is code-only and behaviour-unchanged at the default, so it is a safe no-op until a model is actually swapped.
 
 What works in production:
 - 114 surahs + 6,236 verses ingested; verse text, metadata, Abjad/letter/word analysis.
@@ -30,9 +30,11 @@ Known stale claims corrected this refresh: reranking is **enabled** (not disable
 
 ## Next up (highest leverage)
 
-1. ✅ **DONE** — Reranking made correct: single-source reranker model, post-rerank `min_similarity` scale bug fixed (PR #15, live), per-request rerank kill-switch, eval harness, and **language-aware reranking** so AR/TR queries get a real rerank signal (branch `feat/search-quality-2026-06-05`). A latent reranked-score→candidate index-mapping bug was also fixed. *(was TODO P0)*
-2. **Activate the multilingual reranker in prod** — set `RERANKER_MODEL=jina…` (no rebuild; reversible) once RAM headroom is confirmed; verify AR/TR gains with `eval/run_eval.py`. — *TODO P2 (operator / sign-off)*
-3. Turn on observability and document the real deploy/migrate/ingest order. — *TODO P1*
+1. ✅ **DONE** — Reranking made correct: single-source reranker model, post-rerank `min_similarity` scale bug fixed (PR #15, live), per-request rerank kill-switch, eval harness, and **language-aware reranking** so AR/TR queries get a real rerank signal. A latent reranked-score→candidate index-mapping bug was also fixed. *(was TODO P0)*
+2. ✅ **DONE 2026-06-06** — **Pluggable embedding backend + model-aware prefix policy** (`feat/embedding-backend-abstraction`): `EMBEDDING_MODEL` selects the backend and its query/passage prefix convention travels with it (e5 → `query: `/`passage: `; else none). Default unchanged (e5-base). Offline, prod-safe A/B harness (`eval/run_offline_ab.py`) added.
+3. ⏳ **Embedding upgrade to e5-large (search-quality frontier)** — the 2026-06-06 offline A/B shows e5-large beats e5-base on the Arabic path by a wide margin (MRR 0.585→**0.854**, nDCG 0.289→**0.452**). Recommended, but **gated**: it is 1024-dim → needs a `vector(768)→vector(1024)` migration + full re-embed + owner sign-off (see Phase 3). Default stays e5-base until then.
+4. **Activate the multilingual reranker in prod** — set `RERANKER_MODEL=jina…` (needs image rebuild w/ pinned transformers — the no-rebuild path was falsified 2026-06-05) once it actually beats the ms-marco MRR 0.478 baseline. — *TODO P2 (operator / sign-off)*
+5. Turn on observability and document the real deploy/migrate/ingest order. — *TODO P1*
 
 ---
 
@@ -46,7 +48,8 @@ Deliverables:
 - ✅ Per-request rerank kill-switch (`rerank: bool|null`) to A/B a query against raw RRF. *(PR #15)*
 - ✅ Search-quality eval harness (`eval/`, labelled EN/TR/AR query set, precision@k / recall@k / MRR by language) to gate any ranking change. *(branch `feat/search-quality-2026-06-05`)*
 - ✅ Language-aware reranking: native AR/TR candidate text is fed to a multilingual reranker so Arabic/Turkish queries get a real rerank signal (was English-only → AR/TR pinned at RRF floor); English-only reranker is never fed text it cannot score. Latent reranked-score→candidate index-mapping bug fixed. *(branch `feat/search-quality-2026-06-05`)*
-- ⏳ **Activate** the multilingual reranker in prod (`RERANKER_MODEL=jina…`, no rebuild — `einops` already in image, reversible) once RAM headroom is confirmed and the eval harness shows AR/TR gains. *(operator / sign-off — TODO P2)*
+- ✅ **Pluggable embedding backend + model-aware prefix policy** (2026-06-06, `feat/embedding-backend-abstraction`): the e5 `query: `/`passage: ` convention is now a property of the chosen backend (`prefix_policy.py`), so `EMBEDDING_MODEL` swaps the model *and* its prefixing safely; default unchanged. Plus an offline, prod-safe A/B harness (`eval/run_offline_ab.py`, MRR/nDCG/recall@k) that proves an embedding change before any re-embed.
+- ⏳ **Activate** the multilingual reranker in prod — needs an image rebuild with pinned transformers for jina (the "no rebuild" path was falsified 2026-06-05) and an eval that beats ms-marco MRR 0.478. *(operator / sign-off — TODO P2)*
 
 ## Phase 2 — Production hardening & observability
 
@@ -65,7 +68,14 @@ Deliverables:
 Deliverables:
 - Real Quranic Arabic Corpus ingested so roots/lemmas/patterns are populated (or endpoints/UI clearly labelled "preview").
 - Additional tafsir/translation corpora ingested + embedded and verified in search results.
-- Optional embedding-model upgrade (`BAAI/bge-m3`, 1024-dim) — only if it beats `multilingual-e5-base` on the Phase 1 eval harness; gated behind a `vector(768)→vector(1024)` migration and full re-embed.
+- **Embedding-model upgrade to `intfloat/multilingual-e5-large` (1024-dim)** — the
+  offline A/B (`docs/EMBEDDING_AB_2026-06-06.md`) already shows it beats e5-base on
+  the Arabic path (MRR +0.269, nDCG +0.163). The pluggable backend + prefix policy
+  is in place, so the remaining work is the **breaking** part: a
+  `vector(768)→vector(1024)` Alembic migration, `EMBEDDING_DIMENSION=1024`, a full
+  re-embed of all verses/translations/chunks, and a live `eval/run_eval.py` re-check
+  for EN/TR before cutover. Flag-gated (`EMBEDDING_MODEL`), owner-signed-off rollout.
+  (`BAAI/bge-m3`, also 1024-dim, remains an alternative candidate to A/B the same way.)
 
 ## Phase 4 — Product features
 

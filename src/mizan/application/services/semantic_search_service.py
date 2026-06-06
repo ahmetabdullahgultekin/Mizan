@@ -24,9 +24,12 @@ from mizan.domain.repositories.library_interfaces import (
 )
 from mizan.domain.services.embedding_service import IEmbeddingService
 from mizan.domain.services.reranking_service import IRerankerService
+from mizan.infrastructure.embeddings.prefix_policy import E5_POLICY
 
-# Prefix for e5-style models: queries use 'query: ' prefix
-QUERY_PREFIX = "query: "
+# Historical e5 query prefix, kept as the documented default. The live prefix is
+# resolved per-backend via ``embedding_service.query_prefix()``; this constant is
+# the e5 value (single source of truth = ``E5_POLICY``).
+QUERY_PREFIX = E5_POLICY.query_prefix
 
 logger = structlog.get_logger(__name__)
 
@@ -135,7 +138,14 @@ class SemanticSearchService:
         # --- Vector retrieval paths ---
         # NOTE: SQLAlchemy AsyncSession does NOT support concurrent queries
         # on the same session, so we run all DB queries sequentially.
-        query_embedding = await self._embedder.embed_text(QUERY_PREFIX + query)
+        #
+        # The query prefix is a property of the embedding backend: the e5 family
+        # returns 'query: ' (== QUERY_PREFIX), while prefix-less models (gemini,
+        # bge-m3, …) return ''. Trusting the backend verbatim is what makes the
+        # prefix convention swap correctly with EMBEDDING_MODEL; it is identical
+        # to the historical QUERY_PREFIX for the prod e5 default.
+        query_prefix = self._embedder.query_prefix()
+        query_embedding = await self._embedder.embed_text(query_prefix + query)
 
         result_lists: list[list[SemanticSearchResult]] = []
 
