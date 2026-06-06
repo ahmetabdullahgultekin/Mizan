@@ -1,0 +1,147 @@
+---
+title: "Mizan T2 — Concept Cross-Reference Graph: C4 Component + Key Flows"
+---
+
+%%
+  This file contains three diagrams concatenated with %%---%%:
+    1. C4 Component view (system architecture)
+    2. Sequence: offline edge derivation
+    3. Sequence: API request (graph traversal)
+%%
+
+%% ============================================================
+%% Diagram 1: C4 Component view
+%% ============================================================
+
+flowchart TB
+
+  subgraph Browser["Browser (Next.js 16 / React 19)"]
+    direction TB
+    PAGE["concepts/[type]/[id]/page.tsx\n(Server Component)"]
+    EXPLORER["ConceptGraphExplorer.tsx\n(Client Component — lazy)"]
+    CYTO["cytoscape.js\n(graph renderer)"]
+    PANEL["ConceptGraphPanel.tsx\n(filters, legend, depth)"]
+
+    PAGE -->|fetch on server| APICALL["GET /api/v1/concepts/{type}/{id}/graph"]
+    PAGE --> EXPLORER
+    EXPLORER --> CYTO
+    EXPLORER --> PANEL
+  end
+
+  subgraph API["FastAPI (async SQLAlchemy)"]
+    direction TB
+    ROUTER["api/routers/concepts.py"]
+    SVC["application/services/\nconceptGraphService.py"]
+    REPO["infrastructure/persistence/\ngraphRepository.py"]
+    ROUTER --> SVC
+    SVC --> REPO
+  end
+
+  subgraph DB["PostgreSQL 17 + pgvector"]
+    direction TB
+    CE["concept_edges\n(src_type, src_id,\ndst_type, dst_id,\nrelation, weight)"]
+    VE["verse_embeddings\n(6 236 rows, 768-dim HNSW)"]
+    TC["text_chunks\n(36 504 rows, 768-dim HNSW)"]
+    V["verses"]
+    M["morphology\n(MASAQ root column)"]
+    CE -.->|reads during traversal| V
+    CE -.->|reads during traversal| TC
+  end
+
+  subgraph SCRIPT["scripts/build_concept_graph.py\n(offline, self-hosted runner)"]
+    E1["EXPLICIT_REF\n(SQL insert from metadata_)"]
+    E2["SEMANTIC\n(pgvector ANN batched)"]
+    E3["SHARED_ROOT\n(ISRI + MASAQ roots, Jaccard)"]
+  end
+
+  APICALL -->|HTTPS| ROUTER
+  REPO -->|recursive CTE| CE
+  SCRIPT -->|writes| CE
+  E2 -->|reads HNSW| VE
+  E2 -->|reads HNSW| TC
+  E3 -->|reads| V
+  E3 -->|reads| M
+
+  style CE fill:#d4e6f1,stroke:#2980b9
+  style CYTO fill:#d5f5e3,stroke:#27ae60
+  style SCRIPT fill:#fdebd0,stroke:#e67e22
+
+%% ============================================================
+%% Diagram 2: Sequence — offline edge derivation
+%% ============================================================
+
+sequenceDiagram
+    participant OPS as Operator / CI runner
+    participant SCRIPT as build_concept_graph.py
+    participant PG as PostgreSQL
+    participant ISRI as ISRI Stemmer (in-process)
+
+    OPS->>SCRIPT: python build_concept_graph.py --strategy all --rebuild
+
+    note over SCRIPT,PG: Phase 1 — EXPLICIT_REF (fast, SQL-only)
+    SCRIPT->>PG: INSERT INTO concept_edges ...\nSELECT from text_chunks JOIN verses\nON metadata_->>'surah_number' / verse_number\nON CONFLICT DO UPDATE
+    PG-->>SCRIPT: ~36 504 rows upserted (~5 s)
+
+    note over SCRIPT,PG: Phase 2 — SEMANTIC (batched ANN)
+    loop for each batch of 500 verse/chunk IDs
+        SCRIPT->>PG: SELECT id, embedding FROM verse_embeddings / text_chunks
+        PG-->>SCRIPT: batch embeddings
+        SCRIPT->>PG: SELECT id FROM verse_embeddings\nORDER BY embedding <=> :vec LIMIT 10\n(HNSW cosine ANN per node)
+        PG-->>SCRIPT: top-10 neighbours + cosine scores
+        SCRIPT->>PG: INSERT INTO concept_edges (SEMANTIC)\nwhere score >= 0.75\nON CONFLICT DO UPDATE
+    end
+    PG-->>SCRIPT: ~100 000 SEMANTIC rows (~30 min)
+
+    note over SCRIPT,PG: Phase 3 — SHARED_ROOT (ISRI + MASAQ)
+    SCRIPT->>PG: SELECT v.id, v.text_no_tashkeel,\nCOALESCE(m.root, NULL) AS masaq_root\nFROM verses v LEFT JOIN morphology m\nON m.verse_id = v.id AND m.morpheme_type = 'STEM'
+    PG-->>SCRIPT: verse words + MASAQ roots (null where MASAQ absent)
+    loop for each verse word without MASAQ root
+        SCRIPT->>ISRI: stem(word)
+        ISRI-->>SCRIPT: root string
+    end
+    note over SCRIPT: Compute per-verse root sets;\nall-pairs Jaccard; filter >=2 shared roots
+    SCRIPT->>PG: INSERT INTO concept_edges (SHARED_ROOT)\nON CONFLICT DO UPDATE
+    PG-->>SCRIPT: ~36 000 SHARED_ROOT rows (after >=2 filter, ~60 s)
+
+    OPS<<->>SCRIPT: Done — derived_at timestamp logged
+
+%% ============================================================
+%% Diagram 3: Sequence — API request (graph traversal)
+%% ============================================================
+
+sequenceDiagram
+    participant FE as Browser (ConceptGraphExplorer)
+    participant API as FastAPI /concepts router
+    participant SVC as ConceptGraphService
+    participant REPO as PostgresConceptGraphRepository
+    participant PG as PostgreSQL (concept_edges)
+    participant VERSE as PostgreSQL (verses / text_chunks)
+
+    FE->>API: GET /api/v1/concepts/verse/2/255/graph\n?depth=2&relations=EXPLICIT_REF,SEMANTIC
+
+    API->>API: validate anchor_type, depth (1-3),\ncheck CONCEPT_GRAPH_ENABLED flag
+    alt flag OFF
+        API-->>FE: 503 Service Unavailable
+    end
+
+    API->>VERSE: SELECT id FROM verses\nWHERE surah_number=2 AND verse_number=255
+    VERSE-->>API: anchor_id (UUID)
+
+    API->>SVC: get_graph(anchor_type=VERSE, anchor_id, depth=2, relations=[...])
+    SVC->>REPO: traverse(anchor_type, anchor_id, depth, relations)
+
+    REPO->>PG: WITH RECURSIVE graph AS (\n  base: edges touching anchor\n  UNION ALL\n  expand hop+1 WHERE hop < 2\n)\nSELECT DISTINCT ... LIMIT 500
+    PG-->>REPO: edge rows (src_type, src_id, dst_type, dst_id, relation, weight)
+
+    note over REPO,VERSE: Bulk-fetch node metadata for all unique node IDs
+    REPO->>VERSE: SELECT id, surah_number, verse_number,\ntext_uthmani FROM verses WHERE id IN (...)
+    VERSE-->>REPO: verse node data
+    REPO->>VERSE: SELECT id, reference, content,\nsource_type FROM text_chunks WHERE id IN (...)
+    VERSE-->>REPO: tafsir/hadith node data
+
+    REPO-->>SVC: ConceptGraph(nodes, edges, truncated)
+    SVC-->>API: ConceptGraphResponse DTO
+
+    API-->>FE: 200 JSON\n{anchor, nodes[], edges[], truncated, edge_counts}
+
+    FE->>FE: cytoscape.js renders graph;\nfilter toggles show/hide edge types;\ndepth slider triggers new fetch
